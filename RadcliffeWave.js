@@ -46,17 +46,17 @@ function onReady() {
   settings.set_showConstellationFigures(false);
   settings.set_showCrosshairs(false);
   setupDustLayer();
-  setupClusterLayer();
-  setupSunLayer();
-  setupBestFitLayer();
+  // setupClusterLayer();
+  // setupSunLayer();
+  // setupBestFitLayer();
 
   window.requestAnimationFrame(checkForTimeReset);
 }
 
 function setupDustLayer() {
-  const dustColor = wwtlib.Color.load("#ec0018");
   fetch("RW_dust_oscillation_phase_updated_radec.csv")
     .then(response => response.text())
+    .then(text => text.replace(/\n/g, "\r\n"))
     .then(text => { 
       dustLayer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", "Radcliffe Wave Dust", text);
       dustLayer.set_lngColumn(0);
@@ -64,21 +64,23 @@ function setupDustLayer() {
       dustLayer.set_altColumn(2);
       dustLayer.set_startDateColumn(4);
       dustLayer.set_endDateColumn(5);
-      // dustLayer.set_colorMap(3);
+      dustLayer.set_colorMap(3);
+      dustLayer.set_colorMapColumn(6);
       dustLayer.set_timeSeries(true);
       dustLayer.set_raUnits(wwtlib.RAUnits.degrees);
       dustLayer.set_altUnit(wwtlib.AltUnits.parsecs);
       dustLayer.set_altType(wwtlib.AltTypes.distance);
-      dustLayer.set_color(dustColor);
       dustLayer.set_showFarSide(true);
       dustLayer.set_scaleFactor(25);
       dustLayer.set_markerScale(wwtlib.MarkerScales.screen);
+      console.log(dustLayer);
     });
 }
 
 function setupClusterLayer() {
   fetch("RW_cluster_oscillation_phase_updated_radec.csv")
     .then(response => response.text())
+    .then(text => text.replace(/\n/g, "\r\n"))
     .then(text => { 
       clusterLayer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", "Radcliffe Wave Cluster", text);
       clusterLayer.set_lngColumn(0);

@@ -18,14 +18,17 @@ def wwt_rgbas_for_phases(phases, color, initial_opacity, final_opacity, start_fa
 
     rgbas = []
     for phase in phases:
+        phase = 180 - abs(180 - phase)
         if phase < start_fade:
             opacity = initial_opacity
         elif phase > end_fade:
             opacity = final_opacity
         else:
             opacity = m * phase + b
+
+        opacity = round(opacity)
         
-        rgba = f"{opacity}:{rgb_str}"
+        rgba = f":{opacity}:{rgb_str}"
         rgbas.append(rgba)
 
     return rgbas
