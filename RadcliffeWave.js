@@ -46,8 +46,8 @@ function onReady() {
   settings.set_showConstellationFigures(false);
   settings.set_showCrosshairs(false);
   setupDustLayer();
-  // setupClusterLayer();
-  // setupSunLayer();
+  setupClusterLayer();
+  setupSunLayer();
   // setupBestFitLayer();
 
   window.requestAnimationFrame(checkForTimeReset);
@@ -64,8 +64,8 @@ function setupDustLayer() {
       dustLayer.set_altColumn(2);
       dustLayer.set_startDateColumn(4);
       dustLayer.set_endDateColumn(5);
-      dustLayer.set_colorMap(3);
-      dustLayer.set_colorMapColumn(6);
+      //dustLayer.set_colorMap(3);
+      //dustLayer.set_colorMapColumn(6);
       dustLayer.set_timeSeries(true);
       dustLayer.set_raUnits(wwtlib.RAUnits.degrees);
       dustLayer.set_altUnit(wwtlib.AltUnits.parsecs);
@@ -108,9 +108,6 @@ function setupSunLayer() {
       sunLayer.set_lngColumn(0);
       sunLayer.set_latColumn(1);
       sunLayer.set_altColumn(2);
-      sunLayer.set_startDateColumn(4);
-      sunLayer.set_endDateColumn(5);
-      sunLayer.set_timeSeries(true);
       sunLayer.set_raUnits(wwtlib.RAUnits.degrees);
       sunLayer.set_altUnit(wwtlib.AltUnits.parsecs);
       sunLayer.set_altType(wwtlib.AltTypes.distance);
@@ -130,6 +127,9 @@ function setupBestFitLayer() {
       bestFitLayer.set_lngColumn(0);
       bestFitLayer.set_latColumn(1);
       bestFitLayer.set_altColumn(2);
+      bestFitLayer.set_startDateColumn(4);
+      bestFitLayer.set_endDateColumn(5);
+      bestFitLayer.set_timeSeries(true);
       bestFitLayer.set_raUnits(wwtlib.RAUnits.degrees);
       bestFitLayer.set_altUnit(wwtlib.AltUnits.parsecs);
       bestFitLayer.set_altType(wwtlib.AltTypes.distance);
@@ -139,6 +139,31 @@ function setupBestFitLayer() {
       bestFitLayer.set_markerScale(wwtlib.MarkerScales.screen);
     });
 }
+
+var tourxml;
+
+function getViewAsTour() {
+
+  // Get current view as XML and save to the tourxml variable
+
+  wwtlib.WWTControl.singleton.createTour()
+  editor = wwtlib.WWTControl.singleton.tourEdit
+  editor.addSlide()
+  tour = editor.get_tour()
+  blb = tour.saveToBlob()
+
+  const reader = new FileReader();
+
+  reader.addEventListener('loadend', (e) => {
+  const text = e.srcElement.result;
+    tourxml += text;
+  });
+
+  // Start reading the blob as text.
+  reader.readAsText(blb);
+
+}
+
 
 function checkForTimeReset(_timestamp) {
   if (wwtlib.SpaceTimeController.get_now() >= endTime) {
