@@ -11,10 +11,10 @@
 
 var scriptInterface, wwt;
 var clusterLayer, dustLayer, sunLayer, bestFitLayer;
+var bestFitAnnotation;
 
-var startTime = new Date("2023-10-17 11:55:55Z");
+var startTime = new Date("2023-10-18 11:55:55Z");
 var endTime = new Date("2025-10-06 11:55:55Z");
-
 
 
 function initWWT() {
@@ -43,14 +43,35 @@ function onReady() {
 
   settings.set_solarSystemStars(false);
   settings.set_actualPlanetScale(true);
+  settings.set_showConstellationBoundries(false);  // The typo is intentional
   settings.set_showConstellationFigures(false);
   settings.set_showCrosshairs(false);
   setupDustLayer();
   setupClusterLayer();
   setupSunLayer();
-  // setupBestFitLayer();
+  setupBestFitLayer().then(() => {
+    window.requestAnimationFrame(onAnimationFrame);
+  });
+}
 
-  window.requestAnimationFrame(checkForTimeReset);
+// All of our layers share a lot of basic setup
+// so handle it all in one place
+function basicLayerSetup(layer, timeSeries=false) {
+  layer.set_lngColumn(0);
+  layer.set_latColumn(1);
+  layer.set_altColumn(2);
+  layer.set_raUnits(wwtlib.RAUnits.degrees);
+  layer.set_altUnit(wwtlib.AltUnits.parsecs);
+  layer.set_altType(wwtlib.AltTypes.distance);
+  layer.set_showFarSide(true);
+  layer.set_markerScale(wwtlib.MarkerScales.screen);
+
+  if (timeSeries) {
+    layer.set_startDateColumn(4);
+    layer.set_endDateColumn(5);
+    layer.set_timeSeries(true);
+    layer.set_decay(20);
+  }
 }
 
 function setupDustLayer() {
@@ -59,21 +80,8 @@ function setupDustLayer() {
     .then(text => text.replace(/\n/g, "\r\n"))
     .then(text => { 
       dustLayer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", "Radcliffe Wave Dust", text);
-      dustLayer.set_lngColumn(0);
-      dustLayer.set_latColumn(1);
-      dustLayer.set_altColumn(2);
-      dustLayer.set_startDateColumn(4);
-      dustLayer.set_endDateColumn(5);
-      //dustLayer.set_colorMap(3);
-      //dustLayer.set_colorMapColumn(6);
-      dustLayer.set_timeSeries(true);
-      dustLayer.set_raUnits(wwtlib.RAUnits.degrees);
-      dustLayer.set_altUnit(wwtlib.AltUnits.parsecs);
-      dustLayer.set_altType(wwtlib.AltTypes.distance);
-      dustLayer.set_showFarSide(true);
+      basicLayerSetup(dustLayer, true);
       dustLayer.set_scaleFactor(25);
-      dustLayer.set_markerScale(wwtlib.MarkerScales.screen);
-      console.log(dustLayer);
     });
 }
 
@@ -83,19 +91,9 @@ function setupClusterLayer() {
     .then(text => text.replace(/\n/g, "\r\n"))
     .then(text => { 
       clusterLayer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", "Radcliffe Wave Cluster", text);
-      clusterLayer.set_lngColumn(0);
-      clusterLayer.set_latColumn(1);
-      clusterLayer.set_altColumn(2);
-      clusterLayer.set_startDateColumn(4);
-      clusterLayer.set_endDateColumn(5);
-      clusterLayer.set_timeSeries(true);
-      clusterLayer.set_raUnits(wwtlib.RAUnits.degrees);
-      clusterLayer.set_altUnit(wwtlib.AltUnits.parsecs);
-      clusterLayer.set_altType(wwtlib.AltTypes.distance);
+      basicLayerSetup(clusterLayer, true);
       clusterLayer.set_color(wwtlib.Color.load("#1f3cf1"));
-      clusterLayer.set_showFarSide(true);
       clusterLayer.set_scaleFactor(30);
-      clusterLayer.set_markerScale(wwtlib.MarkerScales.screen);
     });
 }
 
@@ -105,43 +103,70 @@ function setupSunLayer() {
     .then(text => text.replace(/\n/g, "\r\n"))
     .then(text => { 
       sunLayer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", "Radcliffe Wave Sun", text);
-      sunLayer.set_lngColumn(0);
-      sunLayer.set_latColumn(1);
-      sunLayer.set_altColumn(2);
-      sunLayer.set_raUnits(wwtlib.RAUnits.degrees);
-      sunLayer.set_altUnit(wwtlib.AltUnits.parsecs);
-      sunLayer.set_altType(wwtlib.AltTypes.distance);
+      basicLayerSetup(sunLayer, false);
       sunLayer.set_color(wwtlib.Color.load("#ffff0a"));
-      sunLayer.set_showFarSide(true);
       sunLayer.set_scaleFactor(50);
-      sunLayer.set_markerScale(wwtlib.MarkerScales.screen);
     });
 }
 
 function setupBestFitLayer() {
-  fetch("RW_best_fit_oscillation_phase_radec.csv")
+  return fetch("RW_best_fit_oscillation_phase_radec.csv")
     .then(response => response.text())
     .then(text => text.replace(/\n/g, "\r\n"))
     .then(text => { 
-      bestFitLayer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", "Radcliffe Wave Best Fit", text);
-      bestFitLayer.set_lngColumn(0);
-      bestFitLayer.set_latColumn(1);
-      bestFitLayer.set_altColumn(2);
-      bestFitLayer.set_startDateColumn(4);
-      bestFitLayer.set_endDateColumn(5);
-      bestFitLayer.set_timeSeries(true);
-      bestFitLayer.set_raUnits(wwtlib.RAUnits.degrees);
-      bestFitLayer.set_altUnit(wwtlib.AltUnits.parsecs);
-      bestFitLayer.set_altType(wwtlib.AltTypes.distance);
+
+      // We are deliberately not going to add this to the layer manager
+      // We're just hijacking the table-parsing functionality for the line annotation
+      bestFitLayer = new wwtlib.SpreadSheetLayer();
+      bestFitLayer.loadFromString(text, false, false, false, true);
+      basicLayerSetup(bestFitLayer, true);
+      bestFitLayer.set_name("Radcliffe Wave Best Fit");
       bestFitLayer.set_color(wwtlib.Color.load("#83befb"));
-      bestFitLayer.set_showFarSide(true);
       bestFitLayer.set_scaleFactor(50);
-      bestFitLayer.set_markerScale(wwtlib.MarkerScales.screen);
     });
 }
 
-var tourxml;
+function updateBestFitAnnotation() {
+  const phase = getCurrentPhase();
+  const lngCol = bestFitLayer.get_lngColumn();
+  const latCol = bestFitLayer.get_latColumn();
+  const dCol = bestFitLayer.get_altColumn();
+  const phaseCol = 3;
+  scriptInterface.removeAnnotation(bestFitAnnotation);
+  bestFitAnnotation = new wwtlib.PolyLine();
+  bestFitAnnotation.set_lineColor("#83befb");
+  const ecliptic = wwtlib.Coordinates.meanObliquityOfEcliptic(wwtlib.SpaceTimeController.get_jNow()) / 180 * Math.PI;
+  for (const row of bestFitLayer.get__table().rows) {
+    if (row[phaseCol] != phase) {
+      continue;
+    }
+    
+    // The API for annotations seem to assume that we're in 2D sky mode - there's no option for distance
+    // so we have to calculate our positions in 3D and just directly insert them into the array of points
+    // These calculations are stolen from around here: https://github.com/Carifio24/wwt-webgl-engine/blob/master/engine/esm/layers/spreadsheet_layer.js#L706
+    let alt = row[dCol];
+    let factor = bestFitLayer.getScaleFactor(bestFitLayer.get_altUnit(), 1);
+    factor = factor / (1000 * 149598000);
+    alt = (factor * alt);
+    const pos = wwtlib.Coordinates.geoTo3dRad(row[latCol], row[lngCol], alt);
+    pos.rotateX(ecliptic);
+    bestFitAnnotation._points$1.push(pos);
+  }
+  scriptInterface.addAnnotation(bestFitAnnotation);
+}
 
+// WWT isn't actually using the phase -
+// it's using the start/end times that I constructed from it.
+// This means that to get the current phase, we need to extract it from the WWT clock.
+function getCurrentPhase() {
+  const start = startTime.getTime();
+  const now = wwtlib.SpaceTimeController.get_now().getTime();
+  const interval = 8.64e7;  // 1 day in ms
+  let intervals = Math.floor((now - start) / interval);
+  return intervals % 360;
+}
+
+var tourxml;
 function getViewAsTour() {
 
   // Get current view as XML and save to the tourxml variable
@@ -165,11 +190,12 @@ function getViewAsTour() {
 }
 
 
-function checkForTimeReset(_timestamp) {
+function onAnimationFrame(_timestamp) {
   if (wwtlib.SpaceTimeController.get_now() >= endTime) {
     wwtlib.SpaceTimeController.set_now(startTime);
   }
-  window.requestAnimationFrame(checkForTimeReset);
+  updateBestFitAnnotation();
+  window.requestAnimationFrame(onAnimationFrame);
 }
 
 window.addEventListener("load", initWWT);
