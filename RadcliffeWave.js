@@ -48,7 +48,7 @@ function onReady() {
   settings.set_showConstellationBoundries(false);  // The typo is intentional
   settings.set_showConstellationFigures(false);
   settings.set_showCrosshairs(false);
-  setupDustLayer();
+  // setupDustLayer();
   setupClusterLayer();
   setupSunLayer();
   setupBestFitLayer().then(() => {
