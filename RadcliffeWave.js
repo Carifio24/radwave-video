@@ -51,7 +51,13 @@ function onReady() {
   setupSunLayer();
   setupBestFitLayer().then(() => {
     window.requestAnimationFrame(onAnimationFrame);
+    hideLoadingModal();
   });
+}
+
+function hideLoadingModal() {
+  const modal = document.querySelector("#modal-loading");
+  modal.style.visibility = "hidden";
 }
 
 // All of our layers share a lot of basic setup
