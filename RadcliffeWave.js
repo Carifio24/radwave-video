@@ -11,7 +11,7 @@
 
 var scriptInterface, wwt;
 var clusterLayer, dustLayer, sunLayer, bestFitLayer;
-var bestFitAnnotation;
+var bestFitAnnotation, factor;
 
 var startTime = new Date("2023-10-18 11:55:55Z");
 var endTime = new Date("2025-10-06 11:55:55Z");
@@ -129,7 +129,11 @@ function setupBestFitLayer() {
       bestFitLayer.set_name("Radcliffe Wave Best Fit");
       bestFitLayer.set_color(wwtlib.Color.load("#83befb"));
       bestFitLayer.set_scaleFactor(50);
-    });
+    })
+    .then(() => {
+      factor = bestFitLayer.getScaleFactor(bestFitLayer.get_altUnit(), 1);
+      factor = factor / (1000 * 149598000);
+    })
 }
 
 function updateBestFitAnnotation() {
@@ -141,7 +145,9 @@ function updateBestFitAnnotation() {
   scriptInterface.removeAnnotation(bestFitAnnotation);
   bestFitAnnotation = new wwtlib.PolyLine();
   bestFitAnnotation.set_lineColor("#83befb");
+
   const ecliptic = wwtlib.Coordinates.meanObliquityOfEcliptic(wwtlib.SpaceTimeController.get_jNow()) / 180 * Math.PI;
+
   for (const row of bestFitLayer.get__table().rows) {
     if (row[phaseCol] != phase) {
       continue;
@@ -151,8 +157,6 @@ function updateBestFitAnnotation() {
     // so we have to calculate our positions in 3D and just directly insert them into the array of points
     // These calculations are stolen from around here: https://github.com/Carifio24/wwt-webgl-engine/blob/master/engine/esm/layers/spreadsheet_layer.js#L706
     let alt = row[dCol];
-    let factor = bestFitLayer.getScaleFactor(bestFitLayer.get_altUnit(), 1);
-    factor = factor / (1000 * 149598000);
     alt = (factor * alt);
     const pos = wwtlib.Coordinates.geoTo3dRad(row[latCol], row[lngCol], alt);
     pos.rotateX(ecliptic);
