@@ -11,7 +11,7 @@
 
 var scriptInterface, wwt;
 var clusterLayer, dustLayer, sunLayer, bestFitLayer;
-var bestFitAnnotation, factor;
+var factor, bestFitAnnotation, bestFit60Annotation, bestFit240Annotation;
 
 var startTime = new Date("2023-10-18 11:55:55Z");
 var endTime = new Date("2025-10-06 11:55:55Z");
@@ -37,6 +37,7 @@ function onReady() {
   wwt.gotoRADecZoom(ra, dec, zoom, true);
   const SECONDS_PER_DAY = 86400;
   const timeRate = 120 * SECONDS_PER_DAY;
+  wwtlib.SpaceTimeController.set_timeRate(timeRate);
 
   // To stop for testing purposes
   // wwtlib.SpaceTimeController.set_now(new Date("2023-10-18 11:55:55Z"));
@@ -51,10 +52,15 @@ function onReady() {
   setupClusterLayer();
   setupSunLayer();
   setupBestFitLayer().then(() => {
-    window.requestAnimationFrame(onAnimationFrame);
-    hideLoadingModal();
-    wwtlib.SpaceTimeController.set_timeRate(timeRate);
-    wwtlib.SpaceTimeController.set_syncToClock(true);
+    setupBestFitPhaseLayers().then(() => {
+      window.requestAnimationFrame(onAnimationFrame);
+      hideLoadingModal();
+      setTimeout(() => {
+        scriptInterface.removeAnnotation(bestFit60Annotation);
+        scriptInterface.removeAnnotation(bestFit240Annotation);
+        wwtlib.SpaceTimeController.set_syncToClock(true);
+      }, 4000);
+    });
   });
 }
 
@@ -79,7 +85,7 @@ function basicLayerSetup(layer, timeSeries=false) {
     layer.set_startDateColumn(4);
     layer.set_endDateColumn(5);
     layer.set_timeSeries(true);
-    layer.set_decay(10);
+    layer.set_decay(1);
   }
 }
 
@@ -131,7 +137,6 @@ function setupBestFitLayer() {
       basicLayerSetup(bestFitLayer, true);
       bestFitLayer.set_name("Radcliffe Wave Best Fit");
       bestFitLayer.set_color(wwtlib.Color.load("#83befb"));
-      bestFitLayer.set_scaleFactor(50);
     })
     .then(() => {
       factor = bestFitLayer.getScaleFactor(bestFitLayer.get_altUnit(), 1);
@@ -139,19 +144,50 @@ function setupBestFitLayer() {
     })
 }
 
-function updateBestFitAnnotation(phase) {
-  const lngCol = bestFitLayer.get_lngColumn();
-  const latCol = bestFitLayer.get_latColumn();
-  const dCol = bestFitLayer.get_altColumn();
-  const phaseCol = 3;
-  scriptInterface.removeAnnotation(bestFitAnnotation);
-  bestFitAnnotation = new wwtlib.PolyLine();
-  bestFitAnnotation.set_lineColor("#83befb");
+function setupBestFitPhaseLayers() {
+  const setup60 = fetch("RW_best_fit_60_radec.csv")
+    .then(response => response.text())
+    .then(text => text.replace(/\n/g, "\r\n"))
+    .then(text => {
+      bestFit60Layer = new wwtlib.SpreadSheetLayer();
+      bestFit60Layer.loadFromString(text, false, false, false, true);
+      basicLayerSetup(bestFit60Layer);
+      bestFit60Layer.set_name("Radcliffe Wave Best Fit 60");
+    })
+    .then(() => {
+      bestFit60Annotation = new wwtlib.PolyLine();
+      bestFit60Annotation.set_lineColor("purple");
+      addLayerPointsToAnnotation(bestFit60Layer, bestFit60Annotation, null);
+      scriptInterface.addAnnotation(bestFit60Annotation);
+    });
 
+    const setup240 = fetch("RW_best_fit_240_radec.csv")
+    .then(response => response.text())
+    .then(text => text.replace(/\n/g, "\r\n"))
+    .then(text => {
+      bestFit240Layer = new wwtlib.SpreadSheetLayer();
+      bestFit240Layer.loadFromString(text, false, false, false, true);
+      basicLayerSetup(bestFit240Layer);
+      bestFit240Layer.set_name("Radcliffe Wave Best Fit 240");
+    })
+    .then(() => {
+      bestFit240Annotation = new wwtlib.PolyLine();
+      bestFit240Annotation.set_lineColor("green");
+      addLayerPointsToAnnotation(bestFit240Layer, bestFit240Annotation, null);
+      scriptInterface.addAnnotation(bestFit240Annotation);
+    });
+
+    return Promise.all([setup60, setup240]);
+}
+
+function addLayerPointsToAnnotation(layer, annotation, rowFilter) {
+  const lngCol = layer.get_lngColumn();
+  const latCol = layer.get_latColumn();
+  const dCol = layer.get_altColumn();
   const ecliptic = wwtlib.Coordinates.meanObliquityOfEcliptic(wwtlib.SpaceTimeController.get_jNow()) / 180 * Math.PI;
 
-  for (const row of bestFitLayer.get__table().rows) {
-    if (row[phaseCol] != phase) {
+  for (const row of layer.get__table().rows) {
+    if (rowFilter != null && !rowFilter(row)) {
       continue;
     }
     
@@ -162,8 +198,16 @@ function updateBestFitAnnotation(phase) {
     alt = (factor * alt);
     const pos = wwtlib.Coordinates.geoTo3dRad(row[latCol], row[lngCol], alt);
     pos.rotateX(ecliptic);
-    bestFitAnnotation._points$1.push(pos);
+    annotation._points$1.push(pos);
   }
+}
+
+function updateBestFitAnnotation(phase) {
+  const phaseCol = 3;
+  scriptInterface.removeAnnotation(bestFitAnnotation);
+  bestFitAnnotation = new wwtlib.PolyLine();
+  bestFitAnnotation.set_lineColor("#83befb");
+  addLayerPointsToAnnotation(bestFitLayer, bestFitAnnotation, (row) => row[phaseCol] == phase);
   scriptInterface.addAnnotation(bestFitAnnotation);
 }
 
