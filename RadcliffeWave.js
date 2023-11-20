@@ -139,7 +139,7 @@ function setupBestFitLayer() {
     })
 }
 
-function updateBestFitAnnotation(phase, opacity) {
+function updateBestFitAnnotation(phase) {
   const lngCol = bestFitLayer.get_lngColumn();
   const latCol = bestFitLayer.get_latColumn();
   const dCol = bestFitLayer.get_altColumn();
@@ -147,7 +147,6 @@ function updateBestFitAnnotation(phase, opacity) {
   scriptInterface.removeAnnotation(bestFitAnnotation);
   bestFitAnnotation = new wwtlib.PolyLine();
   bestFitAnnotation.set_lineColor("#83befb");
-  bestFitAnnotation.set_opacity(opacity);
 
   const ecliptic = wwtlib.Coordinates.meanObliquityOfEcliptic(wwtlib.SpaceTimeController.get_jNow()) / 180 * Math.PI;
 
@@ -220,11 +219,8 @@ function onAnimationFrame(_timestamp) {
   if (wwtlib.SpaceTimeController.get_now() >= endTime) {
     wwtlib.SpaceTimeController.set_now(startTime);
   }
-  const [period, phase] = getCurrentPhaseInfo();
-  const opacity = opacityForPhase(phase, period);
-  dustLayer.set_opacity(opacity);
-  clusterLayer.set_opacity(opacity);
-  updateBestFitAnnotation(phase, opacity);
+  const [_period, phase] = getCurrentPhaseInfo();
+  updateBestFitAnnotation(phase);
   window.requestAnimationFrame(onAnimationFrame);
 }
 
