@@ -29,13 +29,14 @@ function onReady() {
   const settings = scriptInterface.settings;
   wwt.setBackgroundImageByName("Solar System");
   wwt.setForegroundImageByName("Solar System");
+  wwtlib.SpaceTimeController.set_syncToClock(false);
   wwtlib.SpaceTimeController.set_now(startTime);
   const ra = 22.36801497192689;
   const dec = 22.68;
   const zoom = 2189465275.4030666;
   wwt.gotoRADecZoom(ra, dec, zoom, true);
   const SECONDS_PER_DAY = 86400;
-  wwtlib.SpaceTimeController.set_timeRate(120 * SECONDS_PER_DAY);
+  const timeRate = 120 * SECONDS_PER_DAY;
 
   // To stop for testing purposes
   // wwtlib.SpaceTimeController.set_now(new Date("2023-10-18 11:55:55Z"));
@@ -52,6 +53,8 @@ function onReady() {
   setupBestFitLayer().then(() => {
     window.requestAnimationFrame(onAnimationFrame);
     hideLoadingModal();
+    wwtlib.SpaceTimeController.set_timeRate(timeRate);
+    wwtlib.SpaceTimeController.set_syncToClock(true);
   });
 }
 
@@ -76,7 +79,7 @@ function basicLayerSetup(layer, timeSeries=false) {
     layer.set_startDateColumn(4);
     layer.set_endDateColumn(5);
     layer.set_timeSeries(true);
-    layer.set_decay(20);
+    layer.set_decay(10);
   }
 }
 
@@ -136,8 +139,7 @@ function setupBestFitLayer() {
     })
 }
 
-function updateBestFitAnnotation() {
-  const phase = getCurrentPhase();
+function updateBestFitAnnotation(phase, opacity) {
   const lngCol = bestFitLayer.get_lngColumn();
   const latCol = bestFitLayer.get_latColumn();
   const dCol = bestFitLayer.get_altColumn();
@@ -145,6 +147,7 @@ function updateBestFitAnnotation() {
   scriptInterface.removeAnnotation(bestFitAnnotation);
   bestFitAnnotation = new wwtlib.PolyLine();
   bestFitAnnotation.set_lineColor("#83befb");
+  bestFitAnnotation.set_opacity(opacity);
 
   const ecliptic = wwtlib.Coordinates.meanObliquityOfEcliptic(wwtlib.SpaceTimeController.get_jNow()) / 180 * Math.PI;
 
@@ -168,12 +171,12 @@ function updateBestFitAnnotation() {
 // WWT isn't actually using the phase -
 // it's using the start/end times that I constructed from it.
 // This means that to get the current phase, we need to extract it from the WWT clock.
-function getCurrentPhase() {
+function getCurrentPhaseInfo() {
   const start = startTime.getTime();
   const now = wwtlib.SpaceTimeController.get_now().getTime();
   const interval = 8.64e7;  // 1 day in ms
   let intervals = Math.floor((now - start) / interval);
-  return intervals % 360;
+  return [Math.floor(intervals / 360), intervals % 360];
 }
 
 var tourxml;
@@ -200,11 +203,28 @@ function getViewAsTour() {
 }
 
 
+const slope = -1 / 80;
+const intercept = 1 - slope * 100;
+
+function opacityForPhase(phase, period) {
+  if (period === 0 && phase <= 100) return 1;
+  else if (period === 1 && phase <= 260) return 0;
+  if (period === 1) {
+    phase = 460 - phase;
+  }
+  return Math.min(Math.max(slope * phase + intercept, 0), 1);
+}
+
+
 function onAnimationFrame(_timestamp) {
   if (wwtlib.SpaceTimeController.get_now() >= endTime) {
     wwtlib.SpaceTimeController.set_now(startTime);
   }
-  updateBestFitAnnotation();
+  const [period, phase] = getCurrentPhaseInfo();
+  const opacity = opacityForPhase(phase, period);
+  dustLayer.set_opacity(opacity);
+  clusterLayer.set_opacity(opacity);
+  updateBestFitAnnotation(phase, opacity);
   window.requestAnimationFrame(onAnimationFrame);
 }
 
