@@ -31,9 +31,9 @@ function onReady() {
   wwt.setForegroundImageByName("Solar System");
   wwtlib.SpaceTimeController.set_syncToClock(false);
   wwtlib.SpaceTimeController.set_now(startTime);
-  const ra = 22.36801497192689;
-  const dec = 22.68;
-  const zoom = 2189465275.4030666;
+  const ra = 271.87846654/15;
+  const dec = -48.42;
+  const zoom = 289555092.0 * 6;
   wwt.gotoRADecZoom(ra, dec, zoom, true);
   const SECONDS_PER_DAY = 86400;
   const timeRate = 120 * SECONDS_PER_DAY;
@@ -62,11 +62,13 @@ function onReady() {
           const newOpacity = Math.max(opacity - 0.1, 0);
           bestFit60Annotation.set_opacity(newOpacity);
           bestFit240Annotation.set_opacity(newOpacity);
+          sunLayer.set_opacity(newOpacity);
         }, 100);
       }, 3000);
       setTimeout(() => {
         scriptInterface.removeAnnotation(bestFit60Annotation);
         scriptInterface.removeAnnotation(bestFit240Annotation);
+        wwtlib.LayerManager.deleteLayerByID(sunLayer.id);
         wwtlib.SpaceTimeController.set_syncToClock(true);
         clearInterval(fadeInterval);
       }, 4000);
@@ -95,7 +97,7 @@ function basicLayerSetup(layer, timeSeries=false) {
     layer.set_startDateColumn(4);
     layer.set_endDateColumn(5);
     layer.set_timeSeries(true);
-    layer.set_decay(1);
+    layer.set_decay(2);
   }
 }
 
@@ -118,7 +120,8 @@ function setupClusterLayer() {
       clusterLayer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", "Radcliffe Wave Cluster", text);
       basicLayerSetup(clusterLayer, true);
       clusterLayer.set_color(wwtlib.Color.load("#1f3cf1"));
-      clusterLayer.set_scaleFactor(30);
+      clusterLayer.set_opacity(0.5);
+      clusterLayer.set_scaleFactor(70);
     });
 }
 
@@ -130,12 +133,12 @@ function setupSunLayer() {
       sunLayer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", "Radcliffe Wave Sun", text);
       basicLayerSetup(sunLayer, false);
       sunLayer.set_color(wwtlib.Color.load("#ffff0a"));
-      sunLayer.set_scaleFactor(50);
+      sunLayer.set_scaleFactor(100);
     });
 }
 
 function setupBestFitLayer() {
-  return fetch("RW_best_fit_oscillation_phase_radec.csv")
+  return fetch("RW_best_fit_oscillation_phase_radec_downsampled.csv")
     .then(response => response.text())
     .then(text => text.replace(/\n/g, "\r\n"))
     .then(text => { 
