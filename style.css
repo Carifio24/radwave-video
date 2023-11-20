@@ -39,7 +39,7 @@ body::-webkit-scrollbar {
 }
 
 #modal-loading .spinner {
-  background-image: url("https://cosmicds.github.io/minids/carina/img/lunar_loader.397eb237.gif");
+  background-image: url("lunar_loader.gif");
   background-repeat: no-repeat;
   background-size: contain;
   width: 3rem;
