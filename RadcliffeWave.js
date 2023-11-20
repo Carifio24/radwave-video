@@ -55,10 +55,20 @@ function onReady() {
     setupBestFitPhaseLayers().then(() => {
       window.requestAnimationFrame(onAnimationFrame);
       hideLoadingModal();
+      let fadeInterval;
+      setTimeout(() => {
+        fadeInterval = setInterval(() => {
+          const opacity = bestFit60Annotation.get_opacity();
+          const newOpacity = Math.max(opacity - 0.1, 0);
+          bestFit60Annotation.set_opacity(newOpacity);
+          bestFit240Annotation.set_opacity(newOpacity);
+        }, 100);
+      }, 3000);
       setTimeout(() => {
         scriptInterface.removeAnnotation(bestFit60Annotation);
         scriptInterface.removeAnnotation(bestFit240Annotation);
         wwtlib.SpaceTimeController.set_syncToClock(true);
+        clearInterval(fadeInterval);
       }, 4000);
     });
   });
