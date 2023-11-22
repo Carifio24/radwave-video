@@ -16,6 +16,22 @@ var factor, bestFitAnnotation, bestFit60Annotation, bestFit240Annotation;
 var startTime = new Date("2023-10-18 11:55:55Z");
 var endTime = new Date("2025-10-06 11:55:55Z");
 
+var opacityInterval;
+
+var oniOS = (function () {
+  var iosQuirkPresent = function () {
+      var audio = new Audio();
+
+      audio.volume = 0.5;
+      return audio.volume === 1;   // volume cannot be changed from "1" on iOS 12 and below
+  };
+
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  var isAppleDevice = navigator.userAgent.includes('Macintosh');
+  var isTouchScreen = navigator.maxTouchPoints >= 1;   // true for iOS 13 (and hopefully beyond)
+
+  return isIOS || (isAppleDevice && (isTouchScreen || iosQuirkPresent()));
+})();
 
 function initWWT() {
   const builder = new wwtlib.WWTControlBuilder("wwtcanvas");
@@ -48,31 +64,29 @@ function onReady() {
   settings.set_showConstellationBoundries(false);  // The typo is intentional
   settings.set_showConstellationFigures(false);
   settings.set_showCrosshairs(false);
-  // setupDustLayer();
-  setupClusterLayer();
   setupSunLayer();
-  setupBestFitLayer().then(() => {
-    setupBestFitPhaseLayers().then(() => {
-      window.requestAnimationFrame(onAnimationFrame);
-      hideLoadingModal();
-      let fadeInterval;
-      setTimeout(() => {
-        fadeInterval = setInterval(() => {
-          const opacity = bestFit60Annotation.get_opacity();
-          const newOpacity = Math.max(opacity - 0.1, 0);
-          bestFit60Annotation.set_opacity(newOpacity);
-          bestFit240Annotation.set_opacity(newOpacity);
-          sunLayer.set_opacity(newOpacity);
-        }, 100);
-      }, 3000);
-      setTimeout(() => {
-        scriptInterface.removeAnnotation(bestFit60Annotation);
-        scriptInterface.removeAnnotation(bestFit240Annotation);
+  const clustersPromise = setupClusterLayers();
+  const bestFitPromise = setupBestFitLayer();
+  Promise.all([clustersPromise, bestFitPromise]).then(() => {
+    window.requestAnimationFrame(onAnimationFrame);
+    hideLoadingModal();
+    wwtlib.SpaceTimeController.set_syncToClock(true);
+
+    const sunInterval = setInterval(() => {
+      const opacity = sunLayer.get_opacity();
+      const newOpacity = Math.max(opacity - 0.1, 0);
+      sunLayer.set_opacity(newOpacity);
+      if (newOpacity === 0) {
         wwtlib.LayerManager.deleteLayerByID(sunLayer.id);
-        wwtlib.SpaceTimeController.set_syncToClock(true);
-        clearInterval(fadeInterval);
-      }, 4000);
-    });
+        clearInterval(sunInterval);
+      }
+    }, 300);
+
+    // opacityInterval = setInterval(() => {
+    //   const [period, phase] = getCurrentPhaseInfo();
+    //   const opacity = opacityForPhase(phase, period);
+    //   clusterLayer.set_opacity(opacity);
+    // }, 300);
   });
 }
 
@@ -97,7 +111,7 @@ function basicLayerSetup(layer, timeSeries=false) {
     layer.set_startDateColumn(4);
     layer.set_endDateColumn(5);
     layer.set_timeSeries(true);
-    layer.set_decay(2);
+    layer.set_decay(15);
   }
 }
 
@@ -112,17 +126,22 @@ function setupDustLayer() {
     });
 }
 
-function setupClusterLayer() {
-  fetch("RW_cluster_oscillation_phase_updated_radec.csv")
-    .then(response => response.text())
-    .then(text => text.replace(/\n/g, "\r\n"))
-    .then(text => { 
-      clusterLayer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", "Radcliffe Wave Cluster", text);
-      basicLayerSetup(clusterLayer, true);
-      clusterLayer.set_color(wwtlib.Color.load("#1f3cf1"));
-      clusterLayer.set_opacity(0.5);
-      clusterLayer.set_scaleFactor(70);
-    });
+function setupClusterLayers() {
+  const promises = [];
+  for (let phase = 0; phase <= 360; phase++) {
+    const p = fetch(`RW_cluster_oscillation_${phase}_updated_radec.csv`)
+      .then(response => response.text())
+      .then(text => text.replace(/\n/g, "\r\n"))
+      .then(text => { 
+        clusterLayer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", `Radcliffe Wave Cluster Phase ${phase}`, text);
+        basicLayerSetup(clusterLayer, true);
+        clusterLayer.set_color(wwtlib.Color.load("#1f3cf1"));
+        clusterLayer.set_opacity(opacityForPhase(phase));
+        clusterLayer.set_scaleFactor(70);
+      });
+    promises.push(p);
+  }
+  return Promise.all(promises);
 }
 
 function setupSunLayer() {
@@ -155,42 +174,6 @@ function setupBestFitLayer() {
       factor = bestFitLayer.getScaleFactor(bestFitLayer.get_altUnit(), 1);
       factor = factor / (1000 * 149598000);
     })
-}
-
-function setupBestFitPhaseLayers() {
-  const setup60 = fetch("RW_best_fit_60_radec.csv")
-    .then(response => response.text())
-    .then(text => text.replace(/\n/g, "\r\n"))
-    .then(text => {
-      bestFit60Layer = new wwtlib.SpreadSheetLayer();
-      bestFit60Layer.loadFromString(text, false, false, false, true);
-      basicLayerSetup(bestFit60Layer);
-      bestFit60Layer.set_name("Radcliffe Wave Best Fit 60");
-    })
-    .then(() => {
-      bestFit60Annotation = new wwtlib.PolyLine();
-      bestFit60Annotation.set_lineColor("purple");
-      addLayerPointsToAnnotation(bestFit60Layer, bestFit60Annotation, null);
-      scriptInterface.addAnnotation(bestFit60Annotation);
-    });
-
-    const setup240 = fetch("RW_best_fit_240_radec.csv")
-    .then(response => response.text())
-    .then(text => text.replace(/\n/g, "\r\n"))
-    .then(text => {
-      bestFit240Layer = new wwtlib.SpreadSheetLayer();
-      bestFit240Layer.loadFromString(text, false, false, false, true);
-      basicLayerSetup(bestFit240Layer);
-      bestFit240Layer.set_name("Radcliffe Wave Best Fit 240");
-    })
-    .then(() => {
-      bestFit240Annotation = new wwtlib.PolyLine();
-      bestFit240Annotation.set_lineColor("green");
-      addLayerPointsToAnnotation(bestFit240Layer, bestFit240Annotation, null);
-      scriptInterface.addAnnotation(bestFit240Annotation);
-    });
-
-    return Promise.all([setup60, setup240]);
 }
 
 function addLayerPointsToAnnotation(layer, annotation, rowFilter) {
@@ -262,13 +245,12 @@ function getViewAsTour() {
 const slope = -1 / 80;
 const intercept = 1 - slope * 100;
 
-function opacityForPhase(phase, period) {
-  if (period === 0 && phase <= 100) return 1;
-  else if (period === 1 && phase <= 260) return 0;
-  if (period === 1) {
-    phase = 460 - phase;
+function opacityForPhase(phase) {
+  const adjustedPhase = 180 - Math.abs(180 - phase);
+  if (adjustedPhase <= 100) {
+    return 1;
   }
-  return Math.min(Math.max(slope * phase + intercept, 0), 1);
+  return Math.min(Math.max(slope * adjustedPhase + intercept, 0), 1);
 }
 
 
@@ -276,8 +258,10 @@ function onAnimationFrame(_timestamp) {
   if (wwtlib.SpaceTimeController.get_now() >= endTime) {
     wwtlib.SpaceTimeController.set_now(startTime);
   }
-  const [_period, phase] = getCurrentPhaseInfo();
-  updateBestFitAnnotation(phase);
+   const [_period, phase] = getCurrentPhaseInfo();
+ // if (!oniOS) { 
+     updateBestFitAnnotation(phase);
+ // }
   window.requestAnimationFrame(onAnimationFrame);
 }
 
