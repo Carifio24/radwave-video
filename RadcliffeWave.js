@@ -11,10 +11,13 @@
 
 var scriptInterface, wwt;
 var clusterLayer, dustLayer, sunLayer, bestFitLayer;
-var factor, bestFitAnnotation, bestFit60Annotation, bestFit240Annotation;
+var factor, bestFit60Annotation, bestFit240Annotation;
+var bestFitAnnotations = [];
 
 var startTime = new Date("2023-10-18 11:55:55Z");
 var endTime = new Date("2025-10-06 11:55:55Z");
+
+const bestFitOffsets = [-2, -1, 0, 1, 2];
 
 var opacityInterval;
 
@@ -198,13 +201,18 @@ function addLayerPointsToAnnotation(layer, annotation, rowFilter) {
   }
 }
 
-function updateBestFitAnnotation(phase) {
+function updateBestFitAnnotations(phase) {
   const phaseCol = 3;
-  scriptInterface.removeAnnotation(bestFitAnnotation);
-  bestFitAnnotation = new wwtlib.PolyLine();
-  bestFitAnnotation.set_lineColor("#83befb");
-  addLayerPointsToAnnotation(bestFitLayer, bestFitAnnotation, (row) => row[phaseCol] == phase);
-  scriptInterface.addAnnotation(bestFitAnnotation);
+  bestFitAnnotations.forEach(ann => scriptInterface.removeAnnotation(ann));
+  bestFitAnnotations = [];
+  bestFitOffsets.forEach(offset => {
+    const offsetPhase = (phase + offset) % 360;
+    const ann = new wwtlib.PolyLine();
+    ann.set_lineColor("#83befb");
+    addLayerPointsToAnnotation(bestFitLayer, ann, (row) => row[phaseCol] == offsetPhase);
+    scriptInterface.addAnnotation(ann);
+    bestFitAnnotations.push(ann);
+  });
 }
 
 // WWT isn't actually using the phase -
@@ -260,7 +268,7 @@ function onAnimationFrame(_timestamp) {
   }
    const [_period, phase] = getCurrentPhaseInfo();
  // if (!oniOS) { 
-     updateBestFitAnnotation(phase);
+     updateBestFitAnnotations(phase);
  // }
   window.requestAnimationFrame(onAnimationFrame);
 }
