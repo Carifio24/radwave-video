@@ -11,15 +11,26 @@
 
 var scriptInterface, wwt;
 var clusterLayer, dustLayer, sunLayer, bestFitLayer;
+var bestFit60Layer, bestFit240Layer;
 var factor, bestFit60Annotation, bestFit240Annotation;
-var bestFitAnnotations = [];
+let bestFitAnnotations = [];
 
-var startTime = new Date("2023-10-18 11:55:55Z");
-var endTime = new Date("2025-10-06 11:55:55Z");
+let firstChanged = false;
+let timeSlider;
+let playSvg;
+let pauseSvg;
+
+const startDate = new Date("2023-10-18 11:55:55Z");
+const endDate = new Date("2025-10-06 11:55:55Z");
+const startTime = startDate.getTime();
+const endTime = endDate.getTime();
+
+const SECONDS_PER_DAY = 86400;
+const timeRate = 120 * SECONDS_PER_DAY;
 
 const bestFitOffsets = [-2, -1, 0, 1, 2];
+const phaseRowCount = 300;
 
-var opacityInterval;
 
 var oniOS = (function () {
   var iosQuirkPresent = function () {
@@ -48,16 +59,14 @@ function onReady() {
   const settings = scriptInterface.settings;
   wwt.setBackgroundImageByName("Solar System");
   wwt.setForegroundImageByName("Solar System");
+  wwtlib.SpaceTimeController.set_timeRate(timeRate);
   wwtlib.SpaceTimeController.set_syncToClock(false);
-  wwtlib.SpaceTimeController.set_now(startTime);
+  wwtlib.SpaceTimeController.set_now(startDate);
   const ra = 271.87846654/15;
   const dec = -48.42;
   const zoom = 289555092.0 * 6;
   wwt.gotoRADecZoom(ra, dec, zoom, true);
-  const SECONDS_PER_DAY = 86400;
-  const timeRate = 120 * SECONDS_PER_DAY;
-  wwtlib.SpaceTimeController.set_timeRate(timeRate);
-
+  
   // To stop for testing purposes
   // wwtlib.SpaceTimeController.set_now(new Date("2023-10-18 11:55:55Z"));
   // wwtlib.SpaceTimeController.set_syncToClock(false);
@@ -70,26 +79,16 @@ function onReady() {
   setupSunLayer();
   const clustersPromise = setupClusterLayers();
   const bestFitPromise = setupBestFitLayer();
+
   Promise.all([clustersPromise, bestFitPromise]).then(() => {
-    window.requestAnimationFrame(onAnimationFrame);
-    hideLoadingModal();
-    wwtlib.SpaceTimeController.set_syncToClock(true);
-
-    const sunInterval = setInterval(() => {
-      const opacity = sunLayer.get_opacity();
-      const newOpacity = Math.max(opacity - 0.1, 0);
-      sunLayer.set_opacity(newOpacity);
-      if (newOpacity === 0) {
-        wwtlib.LayerManager.deleteLayerByID(sunLayer.id);
-        clearInterval(sunInterval);
-      }
-    }, 300);
-
-    // opacityInterval = setInterval(() => {
-    //   const [period, phase] = getCurrentPhaseInfo();
-    //   const opacity = opacityForPhase(phase, period);
-    //   clusterLayer.set_opacity(opacity);
-    // }, 300);
+    setupBestFitPhaseAnnotations().then(() => {
+      timeSlider = document.querySelector("#time-slider");
+      playSvg = document.querySelector("#play");
+      pauseSvg = document.querySelector("#pause");
+      updateBestFitAnnotations(0);
+      updateSlider(0);
+      hideLoadingModal();
+    });
   });
 }
 
@@ -131,7 +130,7 @@ function setupDustLayer() {
 
 function setupClusterLayers() {
   const promises = [];
-  for (let phase = 0; phase <= 360; phase++) {
+  for (let phase = 0; phase <= 100; phase++) {
     const p = fetch(`RW_cluster_oscillation_${phase}_updated_radec.csv`)
       .then(response => response.text())
       .then(text => text.replace(/\n/g, "\r\n"))
@@ -148,7 +147,7 @@ function setupClusterLayers() {
 }
 
 function setupSunLayer() {
-  fetch("Sun_radec_C.csv")
+  fetch("Sun_radec.csv")
     .then(response => response.text())
     .then(text => text.replace(/\n/g, "\r\n"))
     .then(text => { 
@@ -179,17 +178,54 @@ function setupBestFitLayer() {
     })
 }
 
-function addLayerPointsToAnnotation(layer, annotation, rowFilter) {
+function setupBestFitPhaseAnnotations() {
+  const setup60 = fetch("RW_best_fit_60_radec.csv")
+    .then(response => response.text())
+    .then(text => text.replace(/\n/g, "\r\n"))
+    .then(text => {
+      bestFit60Layer = new wwtlib.SpreadSheetLayer();
+      bestFit60Layer.loadFromString(text, false, false, false, true);
+      basicLayerSetup(bestFit60Layer);
+      bestFit60Layer.set_name("Radcliffe Wave Best Fit 60");
+    })
+    .then(() => {
+      bestFit60Annotation = new wwtlib.PolyLine();
+      bestFit60Annotation.set_lineColor("#8000ff");
+      addPhasePointsToAnnotation(bestFit60Layer, bestFit60Annotation);
+      scriptInterface.addAnnotation(bestFit60Annotation);
+    });
+
+    const setup240 = fetch("RW_best_fit_240_radec.csv")
+    .then(response => response.text())
+    .then(text => text.replace(/\n/g, "\r\n"))
+    .then(text => {
+      bestFit240Layer = new wwtlib.SpreadSheetLayer();
+      bestFit240Layer.loadFromString(text, false, false, false, true);
+      basicLayerSetup(bestFit240Layer);
+      bestFit240Layer.set_name("Radcliffe Wave Best Fit 240");
+    })
+    .then(() => {
+      bestFit240Annotation = new wwtlib.PolyLine();
+      bestFit240Annotation.set_lineColor("#21ff06");
+      addPhasePointsToAnnotation(bestFit240Layer, bestFit240Annotation);
+      scriptInterface.addAnnotation(bestFit240Annotation);
+    });
+
+    return Promise.all([setup60, setup240]);
+}
+
+function addPhasePointsToAnnotation(layer, annotation, startIndex, endIndex) {
   const lngCol = layer.get_lngColumn();
   const latCol = layer.get_latColumn();
   const dCol = layer.get_altColumn();
   const ecliptic = wwtlib.Coordinates.meanObliquityOfEcliptic(wwtlib.SpaceTimeController.get_jNow()) / 180 * Math.PI;
 
-  for (const row of layer.get__table().rows) {
-    if (rowFilter != null && !rowFilter(row)) {
-      continue;
-    }
-    
+  let rows = layer.get__table().rows;
+  if (startIndex != null && endIndex != null) {
+    rows = rows.slice(startIndex, endIndex);
+  }
+
+  for (const row of rows) {
     // The API for annotations seem to assume that we're in 2D sky mode - there's no option for distance
     // so we have to calculate our positions in 3D and just directly insert them into the array of points
     // These calculations are stolen from around here: https://github.com/Carifio24/wwt-webgl-engine/blob/master/engine/esm/layers/spreadsheet_layer.js#L706
@@ -202,14 +238,16 @@ function addLayerPointsToAnnotation(layer, annotation, rowFilter) {
 }
 
 function updateBestFitAnnotations(phase) {
-  const phaseCol = 3;
   bestFitAnnotations.forEach(ann => scriptInterface.removeAnnotation(ann));
   bestFitAnnotations = [];
   bestFitOffsets.forEach(offset => {
     const offsetPhase = (phase + offset) % 360;
     const ann = new wwtlib.PolyLine();
     ann.set_lineColor("#83befb");
-    addLayerPointsToAnnotation(bestFitLayer, ann, (row) => row[phaseCol] == offsetPhase);
+
+    const startIndex = offsetPhase * phaseRowCount;
+    const endIndex = (offsetPhase + 1) * phaseRowCount;
+    addPhasePointsToAnnotation(bestFitLayer, ann, startIndex, endIndex);
     scriptInterface.addAnnotation(ann);
     bestFitAnnotations.push(ann);
   });
@@ -219,12 +257,51 @@ function updateBestFitAnnotations(phase) {
 // it's using the start/end times that I constructed from it.
 // This means that to get the current phase, we need to extract it from the WWT clock.
 function getCurrentPhaseInfo() {
-  const start = startTime.getTime();
+  const start = startDate.getTime();
   const now = wwtlib.SpaceTimeController.get_now().getTime();
   const interval = 8.64e7;  // 1 day in ms
   let intervals = Math.floor((now - start) / interval);
   return [Math.floor(intervals / 360), intervals % 360];
 }
+
+function updateSlider(value) {
+  timeSlider.value = String(value);
+}
+
+function onInputChange(value) {
+  if (!isNaN(value)) {
+    phase = Math.max(0, Math.min(value, 720));
+    const time = startTime + (value / 720) * (endTime - startTime);
+    updateBestFitAnnotations(phase);
+    wwtlib.SpaceTimeController.set_now(new Date(time));
+    if (!firstChanged) {
+      onFirstChange();
+    }
+  }
+}
+
+function onFirstChange() {
+  window.requestAnimationFrame(onAnimationFrame);
+  scriptInterface.removeAnnotation(bestFit60Annotation);
+  scriptInterface.removeAnnotation(bestFit240Annotation);
+  wwtlib.LayerManager.deleteLayerByID(sunLayer.id, true, true);
+  firstChanged = true;
+}
+
+function onPlayPauseClicked() {
+  if (!firstChanged) {
+    onFirstChange();
+  }
+  const play = !wwtlib.SpaceTimeController.get_syncToClock();
+  wwtlib.SpaceTimeController.set_syncToClock(play);
+  updatePlayPauseIcon(play);
+}
+
+function updatePlayPauseIcon(playing) {
+  playSvg.style.display = playing ? "none" : "block";
+  pauseSvg.style.display = playing ? "block" : "none";
+}
+
 
 var tourxml;
 function getViewAsTour() {
@@ -254,22 +331,19 @@ const slope = -1 / 80;
 const intercept = 1 - slope * 100;
 
 function opacityForPhase(phase) {
-  const adjustedPhase = 180 - Math.abs(180 - phase);
-  if (adjustedPhase <= 100) {
-    return 1;
-  }
-  return Math.min(Math.max(slope * adjustedPhase + intercept, 0), 1);
+  return Math.min(Math.max(slope * phase + intercept, 0), 1);
 }
 
 
 function onAnimationFrame(_timestamp) {
-  if (wwtlib.SpaceTimeController.get_now() >= endTime) {
-    wwtlib.SpaceTimeController.set_now(startTime);
+  const [period, phase] = getCurrentPhaseInfo();
+  updateBestFitAnnotations(phase);
+  const totalPhase = period * 360 + phase;
+  updateSlider(totalPhase);
+  if (totalPhase >= 720) {
+    wwtlib.SpaceTimeController.set_syncToClock(false);
+    updatePlayPauseIcon(false);
   }
-   const [_period, phase] = getCurrentPhaseInfo();
- // if (!oniOS) { 
-     updateBestFitAnnotations(phase);
- // }
   window.requestAnimationFrame(onAnimationFrame);
 }
 
