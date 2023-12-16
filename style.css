@@ -66,6 +66,11 @@ body::-webkit-scrollbar {
 
 #play-pause {
   pointer-events: auto;
+  background-color: transparent;
+  border: solid 3px white;
+  border-radius: 10px;
+  height: 60px;
+  width: 60px;
 }
 
 #time-slider {
@@ -77,4 +82,8 @@ body::-webkit-scrollbar {
   pointer-events: auto;
 }
 
-
+#play, #pause {
+  fill: white;
+  color: white;
+  margin: auto;
+}

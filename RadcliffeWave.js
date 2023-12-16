@@ -16,6 +16,9 @@ var factor, bestFit60Annotation, bestFit240Annotation;
 let bestFitAnnotations = [];
 
 let firstChanged = false;
+let timeSlider;
+let playSvg;
+let pauseSvg;
 
 const startDate = new Date("2023-10-18 11:55:55Z");
 const endDate = new Date("2025-10-06 11:55:55Z");
@@ -79,7 +82,11 @@ function onReady() {
 
   Promise.all([clustersPromise, bestFitPromise]).then(() => {
     setupBestFitPhaseAnnotations().then(() => {
+      timeSlider = document.querySelector("#time-slider");
+      playSvg = document.querySelector("#play");
+      pauseSvg = document.querySelector("#pause");
       updateBestFitAnnotations(0);
+      updateSlider(0);
       hideLoadingModal();
     });
   });
@@ -258,10 +265,7 @@ function getCurrentPhaseInfo() {
 }
 
 function updateSlider(value) {
-  const slider = document.querySelector("#time-slider");
-  if (slider) {
-    slider.value = String(value); 
-  }
+  timeSlider.value = String(value);
 }
 
 function onInputChange(value) {
@@ -280,7 +284,7 @@ function onFirstChange() {
   window.requestAnimationFrame(onAnimationFrame);
   scriptInterface.removeAnnotation(bestFit60Annotation);
   scriptInterface.removeAnnotation(bestFit240Annotation);
-  wwtlib.LayerManager.deleteLayerByID(sunLayer.id);
+  wwtlib.LayerManager.deleteLayerByID(sunLayer.id, true, true);
   firstChanged = true;
 }
 
@@ -290,6 +294,8 @@ function onPlayPauseClicked() {
   }
   const play = !wwtlib.SpaceTimeController.get_syncToClock();
   wwtlib.SpaceTimeController.set_syncToClock(play);
+  playSvg.style.display = play ? "none" : "block";
+  pauseSvg.style.display = play ? "block" : "none";
 }
 
 
@@ -326,9 +332,13 @@ function opacityForPhase(phase) {
 
 
 function onAnimationFrame(_timestamp) {
-  const [_period, phase] = getCurrentPhaseInfo();
+  const [period, phase] = getCurrentPhaseInfo();
   updateBestFitAnnotations(phase);
-  updateSlider(phase);
+  const totalPhase = period * 360 + phase;
+  updateSlider(totalPhase);
+  if (totalPhase >= 720) {
+    wwtlib.SpaceTimeController.set_syncToClock(false);
+  }
   window.requestAnimationFrame(onAnimationFrame);
 }
 
