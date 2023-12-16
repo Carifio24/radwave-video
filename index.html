@@ -16,6 +16,9 @@
     <div id="wwtcanvas"></div>
     <script src="RadcliffeWave.js" type="text/javascript"></script>
 
-    <input type="range" id="time-slider" min="0" max="720" oninput="onInputChange"
+    <div id="controls">
+        <button id="play-pause" onclick="onPlayPauseClicked()">Play/Pause</button>
+        <input type="range" id="time-slider" min="0" max="720" oninput="onInputChange(this.value)"></input>
+    </div>
 </body>
 </html>

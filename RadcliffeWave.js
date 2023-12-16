@@ -13,20 +13,21 @@ var scriptInterface, wwt;
 var clusterLayer, dustLayer, sunLayer, bestFitLayer;
 var bestFit60Layer, bestFit240Layer;
 var factor, bestFit60Annotation, bestFit240Annotation;
-var bestFitAnnotations = [];
+let bestFitAnnotations = [];
 
-var firstPlayed = false;
+let firstChanged = false;
 
 const startDate = new Date("2023-10-18 11:55:55Z");
 const endDate = new Date("2025-10-06 11:55:55Z");
 const startTime = startDate.getTime();
 const endTime = endDate.getTime();
 
+const SECONDS_PER_DAY = 86400;
+const timeRate = 120 * SECONDS_PER_DAY;
 
 const bestFitOffsets = [-2, -1, 0, 1, 2];
 const phaseRowCount = 300;
 
-var opacityInterval;
 
 var oniOS = (function () {
   var iosQuirkPresent = function () {
@@ -55,6 +56,7 @@ function onReady() {
   const settings = scriptInterface.settings;
   wwt.setBackgroundImageByName("Solar System");
   wwt.setForegroundImageByName("Solar System");
+  wwtlib.SpaceTimeController.set_timeRate(timeRate);
   wwtlib.SpaceTimeController.set_syncToClock(false);
   wwtlib.SpaceTimeController.set_now(startDate);
   const ra = 271.87846654/15;
@@ -121,7 +123,7 @@ function setupDustLayer() {
 
 function setupClusterLayers() {
   const promises = [];
-  for (let phase = 0; phase <= 360; phase++) {
+  for (let phase = 0; phase <= 100; phase++) {
     const p = fetch(`RW_cluster_oscillation_${phase}_updated_radec.csv`)
       .then(response => response.text())
       .then(text => text.replace(/\n/g, "\r\n"))
@@ -262,26 +264,34 @@ function updateSlider(value) {
   }
 }
 
-function onInputChange(event) {
-  const target = event.target; 
-  const value = Number(target.value);
+function onInputChange(value) {
   if (!isNaN(value)) {
     phase = Math.max(0, Math.min(value, 720));
     const time = startTime + (value / 720) * (endTime - startTime);
     updateBestFitAnnotations(phase);
     wwtlib.SpaceTimeController.set_now(new Date(time));
+    if (!firstChanged) {
+      onFirstChange();
+    }
   }
 }
 
-function onFirstPlay() {
-  console.log(sunLayer);
-  console.log(wwtlib);
-  const SECONDS_PER_DAY = 86400;
-  const timeRate = 120 * SECONDS_PER_DAY;
-  wwtlib.SpaceTimeController.set_timeRate(timeRate);
-  wwtlib.SpaceTimeController.set_syncToClock(true);
+function onFirstChange() {
   window.requestAnimationFrame(onAnimationFrame);
+  scriptInterface.removeAnnotation(bestFit60Annotation);
+  scriptInterface.removeAnnotation(bestFit240Annotation);
+  wwtlib.LayerManager.deleteLayerByID(sunLayer.id);
+  firstChanged = true;
 }
+
+function onPlayPauseClicked() {
+  if (!firstChanged) {
+    onFirstChange();
+  }
+  const play = !wwtlib.SpaceTimeController.get_syncToClock();
+  wwtlib.SpaceTimeController.set_syncToClock(play);
+}
+
 
 var tourxml;
 function getViewAsTour() {
@@ -316,10 +326,9 @@ function opacityForPhase(phase) {
 
 
 function onAnimationFrame(_timestamp) {
-   const [_period, phase] = getCurrentPhaseInfo();
- // if (!oniOS) { 
-     updateBestFitAnnotations(phase);
- // }
+  const [_period, phase] = getCurrentPhaseInfo();
+  updateBestFitAnnotations(phase);
+  updateSlider(phase);
   window.requestAnimationFrame(onAnimationFrame);
 }
 
