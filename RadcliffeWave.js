@@ -294,8 +294,12 @@ function onPlayPauseClicked() {
   }
   const play = !wwtlib.SpaceTimeController.get_syncToClock();
   wwtlib.SpaceTimeController.set_syncToClock(play);
-  playSvg.style.display = play ? "none" : "block";
-  pauseSvg.style.display = play ? "block" : "none";
+  updatePlayPauseIcon(play);
+}
+
+function updatePlayPauseIcon(playing) {
+  playSvg.style.display = playing ? "none" : "block";
+  pauseSvg.style.display = playing ? "block" : "none";
 }
 
 
@@ -338,6 +342,7 @@ function onAnimationFrame(_timestamp) {
   updateSlider(totalPhase);
   if (totalPhase >= 720) {
     wwtlib.SpaceTimeController.set_syncToClock(false);
+    updatePlayPauseIcon(false);
   }
   window.requestAnimationFrame(onAnimationFrame);
 }
