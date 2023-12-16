@@ -118,7 +118,7 @@ function basicLayerSetup(layer, timeSeries=false) {
 }
 
 function setupDustLayer() {
-  fetch("RW_dust_oscillation_phase_updated_radec.csv")
+  fetch("data/RW_dust_oscillation_phase_updated_radec.csv")
     .then(response => response.text())
     .then(text => text.replace(/\n/g, "\r\n"))
     .then(text => { 
@@ -131,7 +131,7 @@ function setupDustLayer() {
 function setupClusterLayers() {
   const promises = [];
   for (let phase = 0; phase <= 100; phase++) {
-    const p = fetch(`RW_cluster_oscillation_${phase}_updated_radec.csv`)
+    const p = fetch(`data/RW_cluster_oscillation_${phase}_updated_radec.csv`)
       .then(response => response.text())
       .then(text => text.replace(/\n/g, "\r\n"))
       .then(text => { 
@@ -147,7 +147,7 @@ function setupClusterLayers() {
 }
 
 function setupSunLayer() {
-  fetch("Sun_radec.csv")
+  fetch("data/Sun_radec.csv")
     .then(response => response.text())
     .then(text => text.replace(/\n/g, "\r\n"))
     .then(text => { 
@@ -159,7 +159,7 @@ function setupSunLayer() {
 }
 
 function setupBestFitLayer() {
-  return fetch("RW_best_fit_oscillation_phase_radec_downsampled.csv")
+  return fetch("data/RW_best_fit_oscillation_phase_radec_downsampled.csv")
     .then(response => response.text())
     .then(text => text.replace(/\n/g, "\r\n"))
     .then(text => { 
@@ -179,7 +179,7 @@ function setupBestFitLayer() {
 }
 
 function setupBestFitPhaseAnnotations() {
-  const setup60 = fetch("RW_best_fit_60_radec.csv")
+  const setup60 = fetch("data/RW_best_fit_60_radec.csv")
     .then(response => response.text())
     .then(text => text.replace(/\n/g, "\r\n"))
     .then(text => {
@@ -195,7 +195,7 @@ function setupBestFitPhaseAnnotations() {
       scriptInterface.addAnnotation(bestFit60Annotation);
     });
 
-    const setup240 = fetch("RW_best_fit_240_radec.csv")
+    const setup240 = fetch("data/RW_best_fit_240_radec.csv")
     .then(response => response.text())
     .then(text => text.replace(/\n/g, "\r\n"))
     .then(text => {
