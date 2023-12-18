@@ -289,6 +289,13 @@ function onFirstChange() {
   firstChanged = true;
 }
 
+function resetInitialScene() {
+  scriptInterface.addAnnotation(bestFit60Annotation);
+  scriptInterface.addAnnotation(bestFit240Annotation);
+  wwtlib.LayerManager.addSpreadsheetLayer(sunLayer, "Sky");
+  firstChanged = false;
+}
+
 function onPlayPauseClicked() {
   if (!firstChanged) {
     onFirstChange();
@@ -344,6 +351,8 @@ function onAnimationFrame(_timestamp) {
   if (totalPhase >= 720) {
     wwtlib.SpaceTimeController.set_syncToClock(false);
     updatePlayPauseIcon(false);
+    wwtlib.SpaceTimeController.set_now(startDate);
+    resetInitialScene();
   }
   window.requestAnimationFrame(onAnimationFrame);
 }
