@@ -336,9 +336,9 @@ function getViewAsTour() {
 
 }
 
-
-const slope = -1 / 80;
-const intercept = 1 - slope * 100;
+const peakOpacity = 0.2;
+const slope = -peakOpacity / 80;
+const intercept = 9 / 4 * peakOpacity;
 
 function opacityForPhase(phase) {
   return Math.min(Math.max(slope * phase + intercept, 0), 1);
