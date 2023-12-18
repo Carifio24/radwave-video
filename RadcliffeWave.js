@@ -72,6 +72,7 @@ function onReady() {
   // wwtlib.SpaceTimeController.set_syncToClock(false);
 
   settings.set_solarSystemStars(false);
+  settings.set_solarSystemCosmos(false);
   settings.set_actualPlanetScale(true);
   settings.set_showConstellationBoundries(false);  // The typo is intentional
   settings.set_showConstellationFigures(false);
