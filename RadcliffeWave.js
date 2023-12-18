@@ -272,6 +272,12 @@ function updateSlider(value) {
 function onInputChange(value) {
   if (!isNaN(value)) {
     phase = Math.max(0, Math.min(value, 720));
+    if (phase === 0) {
+      resetInitialScene();
+    } else {
+      wwtlib.SpaceTimeController.set_syncToClock(false);
+      updatePlayPauseIcon(false);
+    }
     const time = startTime + (value / 720) * (endTime - startTime);
     updateBestFitAnnotations(phase);
     wwtlib.SpaceTimeController.set_now(new Date(time));
@@ -290,6 +296,12 @@ function onFirstChange() {
 }
 
 function resetInitialScene() {
+  if (!firstChanged) {
+    return;
+  }
+  updatePlayPauseIcon(false);
+  wwtlib.SpaceTimeController.set_syncToClock(false);
+  wwtlib.SpaceTimeController.set_now(startDate);
   scriptInterface.addAnnotation(bestFit60Annotation);
   scriptInterface.addAnnotation(bestFit240Annotation);
   wwtlib.LayerManager.addSpreadsheetLayer(sunLayer, "Sky");
@@ -348,10 +360,10 @@ function onAnimationFrame(_timestamp) {
   updateBestFitAnnotations(phase);
   const totalPhase = period * 360 + phase;
   updateSlider(totalPhase);
-  if (totalPhase >= 720) {
+  if (totalPhase === 720) {
     wwtlib.SpaceTimeController.set_syncToClock(false);
-    updatePlayPauseIcon(false);
-    wwtlib.SpaceTimeController.set_now(startDate);
+  }
+  if (totalPhase >= 720 || (phase === 0 && !wwtlib.SpaceTimeController.get_syncToClock())) {
     resetInitialScene();
   }
   window.requestAnimationFrame(onAnimationFrame);
