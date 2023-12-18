@@ -11,9 +11,10 @@
 
 var scriptInterface, wwt;
 var clusterLayer, dustLayer, sunLayer, bestFitLayer;
-var bestFit60Layer, bestFit240Layer;
-var factor, bestFit60Annotation, bestFit240Annotation;
+var factor;
+let bestFitPhaseLayers = [];
 let bestFitAnnotations = [];
+let bestFitPhaseAnnotations = [];
 
 let firstChanged = false;
 let timeSlider;
@@ -29,6 +30,7 @@ const SECONDS_PER_DAY = 86400;
 const timeRate = 120 * SECONDS_PER_DAY;
 
 const bestFitOffsets = [-2, -1, 0, 1, 2];
+const bestFitPhases = [58, 59, 60, 61, 62, 238, 239, 240, 241, 242];
 const phaseRowCount = 300;
 
 
@@ -72,15 +74,16 @@ function onReady() {
   // wwtlib.SpaceTimeController.set_syncToClock(false);
 
   settings.set_solarSystemStars(false);
+  settings.set_solarSystemCosmos(false);
   settings.set_actualPlanetScale(true);
   settings.set_showConstellationBoundries(false);  // The typo is intentional
   settings.set_showConstellationFigures(false);
   settings.set_showCrosshairs(false);
-  setupSunLayer();
+  const sunPromise = setupSunLayer();
   const clustersPromise = setupClusterLayers();
   const bestFitPromise = setupBestFitLayer();
 
-  Promise.all([clustersPromise, bestFitPromise]).then(() => {
+  Promise.all([sunPromise, clustersPromise, bestFitPromise]).then(() => {
     setupBestFitPhaseAnnotations().then(() => {
       timeSlider = document.querySelector("#time-slider");
       playSvg = document.querySelector("#play");
@@ -179,39 +182,29 @@ function setupBestFitLayer() {
 }
 
 function setupBestFitPhaseAnnotations() {
-  const setup60 = fetch("data/RW_best_fit_60_radec.csv")
-    .then(response => response.text())
-    .then(text => text.replace(/\n/g, "\r\n"))
-    .then(text => {
-      bestFit60Layer = new wwtlib.SpreadSheetLayer();
-      bestFit60Layer.loadFromString(text, false, false, false, true);
-      basicLayerSetup(bestFit60Layer);
-      bestFit60Layer.set_name("Radcliffe Wave Best Fit 60");
-    })
-    .then(() => {
-      bestFit60Annotation = new wwtlib.PolyLine();
-      bestFit60Annotation.set_lineColor("#8000ff");
-      addPhasePointsToAnnotation(bestFit60Layer, bestFit60Annotation);
-      scriptInterface.addAnnotation(bestFit60Annotation);
-    });
-
-    const setup240 = fetch("data/RW_best_fit_240_radec.csv")
-    .then(response => response.text())
-    .then(text => text.replace(/\n/g, "\r\n"))
-    .then(text => {
-      bestFit240Layer = new wwtlib.SpreadSheetLayer();
-      bestFit240Layer.loadFromString(text, false, false, false, true);
-      basicLayerSetup(bestFit240Layer);
-      bestFit240Layer.set_name("Radcliffe Wave Best Fit 240");
-    })
-    .then(() => {
-      bestFit240Annotation = new wwtlib.PolyLine();
-      bestFit240Annotation.set_lineColor("#21ff06");
-      addPhasePointsToAnnotation(bestFit240Layer, bestFit240Annotation);
-      scriptInterface.addAnnotation(bestFit240Annotation);
-    });
-
-    return Promise.all([setup60, setup240]);
+  const promises = bestFitPhases.map(phase => {
+    return fetch(`data/RW_best_fit_${phase}_radec.csv`)
+      .then(response => response.text())
+      .then(text => {
+        const layer = new wwtlib.SpreadSheetLayer();
+        layer.loadFromString(text, false, false, false, true);
+        basicLayerSetup(layer);
+        layer.set_name(`Radcliffe Wave Best Fit ${phase}`);
+        bestFitPhaseLayers.push(layer);
+        console.log(layer);
+        return layer;
+      })
+      .then(layer => {
+        const annotation = new wwtlib.PolyLine();
+        const color = phase < 200 ? "#8000ff" : "#21ff06";
+        annotation.set_lineColor(color);
+        addPhasePointsToAnnotation(layer, annotation);
+        scriptInterface.addAnnotation(annotation);
+        bestFitPhaseAnnotations.push(annotation);
+      });
+  });
+  console.log(promises);
+  return Promise.all(promises);
 }
 
 function addPhasePointsToAnnotation(layer, annotation, startIndex, endIndex) {
@@ -271,6 +264,12 @@ function updateSlider(value) {
 function onInputChange(value) {
   if (!isNaN(value)) {
     phase = Math.max(0, Math.min(value, 720));
+    if (phase === 0) {
+      resetInitialScene();
+    } else {
+      wwtlib.SpaceTimeController.set_syncToClock(false);
+      updatePlayPauseIcon(false);
+    }
     const time = startTime + (value / 720) * (endTime - startTime);
     updateBestFitAnnotations(phase);
     wwtlib.SpaceTimeController.set_now(new Date(time));
@@ -282,10 +281,21 @@ function onInputChange(value) {
 
 function onFirstChange() {
   window.requestAnimationFrame(onAnimationFrame);
-  scriptInterface.removeAnnotation(bestFit60Annotation);
-  scriptInterface.removeAnnotation(bestFit240Annotation);
+  bestFitPhaseAnnotations.forEach(ann => scriptInterface.removeAnnotation(ann));
   wwtlib.LayerManager.deleteLayerByID(sunLayer.id, true, true);
   firstChanged = true;
+}
+
+function resetInitialScene() {
+  if (!firstChanged) {
+    return;
+  }
+  updatePlayPauseIcon(false);
+  wwtlib.SpaceTimeController.set_syncToClock(false);
+  wwtlib.SpaceTimeController.set_now(startDate);
+  bestFitPhaseAnnotations.forEach(ann => scriptInterface.addAnnotation(ann));
+  wwtlib.LayerManager.addSpreadsheetLayer(sunLayer, "Sky");
+  firstChanged = false;
 }
 
 function onPlayPauseClicked() {
@@ -326,9 +336,9 @@ function getViewAsTour() {
 
 }
 
-
-const slope = -1 / 80;
-const intercept = 1 - slope * 100;
+const peakOpacity = 0.2;
+const slope = -peakOpacity / 80;
+const intercept = 9 / 4 * peakOpacity;
 
 function opacityForPhase(phase) {
   return Math.min(Math.max(slope * phase + intercept, 0), 1);
@@ -340,9 +350,11 @@ function onAnimationFrame(_timestamp) {
   updateBestFitAnnotations(phase);
   const totalPhase = period * 360 + phase;
   updateSlider(totalPhase);
-  if (totalPhase >= 720) {
+  if (totalPhase === 720) {
     wwtlib.SpaceTimeController.set_syncToClock(false);
-    updatePlayPauseIcon(false);
+  }
+  if (totalPhase >= 720 || (phase === 0 && !wwtlib.SpaceTimeController.get_syncToClock())) {
+    resetInitialScene();
   }
   window.requestAnimationFrame(onAnimationFrame);
 }
