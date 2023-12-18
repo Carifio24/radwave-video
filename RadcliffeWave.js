@@ -77,11 +77,11 @@ function onReady() {
   settings.set_showConstellationBoundries(false);  // The typo is intentional
   settings.set_showConstellationFigures(false);
   settings.set_showCrosshairs(false);
-  setupSunLayer();
+  const sunPromise = setupSunLayer();
   const clustersPromise = setupClusterLayers();
   const bestFitPromise = setupBestFitLayer();
 
-  Promise.all([clustersPromise, bestFitPromise]).then(() => {
+  Promise.all([sunPromise, clustersPromise, bestFitPromise]).then(() => {
     setupBestFitPhaseAnnotations().then(() => {
       timeSlider = document.querySelector("#time-slider");
       playSvg = document.querySelector("#play");
