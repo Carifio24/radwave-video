@@ -2,9 +2,14 @@ html, body {
   height: 100%;
   width: 100%;
   margin: 0;
+  padding: 0;
   overflow: hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+body {
+  position: fixed;
 }
 
 body::-webkit-scrollbar {
@@ -59,6 +64,7 @@ body::-webkit-scrollbar {
   background-color: transparent;
   width: 100%;
   display: flex;
+  margin: 1rem;
   align-items: center;
   gap: 1rem;
   pointer-events: none;
@@ -74,7 +80,7 @@ body::-webkit-scrollbar {
 }
 
 #time-slider {
-  width: 100%;
+  width: calc(90% - 1rem);
   margin: 0;
   padding: 0;
   height: 1rem;
