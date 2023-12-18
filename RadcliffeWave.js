@@ -86,6 +86,7 @@ function onReady() {
       timeSlider = document.querySelector("#time-slider");
       playSvg = document.querySelector("#play");
       pauseSvg = document.querySelector("#pause");
+      hackShader();
       updateBestFitAnnotations(0);
       updateSlider(0);
       hideLoadingModal();
@@ -333,6 +334,24 @@ const intercept = 1 - slope * 100;
 
 function opacityForPhase(phase) {
   return Math.min(Math.max(slope * phase + intercept, 0), 1);
+}
+
+function hackShader() {
+  console.log("Hack shader");
+  const originalLineUse = wwtlib.LineShaderNormalDates.use;
+  const newLineUse = function (renderContext, vertex, lineColor, zBuffer, jNow, decay) {
+    originalLineUse(renderContext, vertex, lineColor, zBuffer, jNow, decay);
+    renderContext.gl?.lineWidth(5);
+  };
+  wwtlib.LineShaderNormalDates.use = newLineUse;
+  
+  const originalPointsUse = wwtlib.TimeSeriesPointSpriteShader.use;
+  const newPointsUse = function (renderContext, vertex, texture, lineColor, zBuffer, jNow, decay, camera, scale, minSize, showFarSide, sky) {
+    originalPointsUse(renderContext, vertex, texture, lineColor, zBuffer, jNow, decay, camera, scale, minSize, showFarSide, sky);
+    renderContext.gl?.lineWidth(5);
+  };
+  wwtlib.TimeSeriesPointSpriteShader.use = newPointsUse;
+
 }
 
 
