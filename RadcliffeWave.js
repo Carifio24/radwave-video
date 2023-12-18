@@ -28,7 +28,7 @@ const endTime = endDate.getTime();
 const SECONDS_PER_DAY = 86400;
 const timeRate = 120 * SECONDS_PER_DAY;
 
-const bestFitOffsets = [-2, -1, 0, 1, 2];
+const bestFitOffsets = [0];
 const phaseRowCount = 300;
 
 
@@ -86,6 +86,7 @@ function onReady() {
       timeSlider = document.querySelector("#time-slider");
       playSvg = document.querySelector("#play");
       pauseSvg = document.querySelector("#pause");
+      hackShader();
       updateBestFitAnnotations(0);
       updateSlider(0);
       hideLoadingModal();
@@ -333,6 +334,16 @@ const intercept = 1 - slope * 100;
 
 function opacityForPhase(phase) {
   return Math.min(Math.max(slope * phase + intercept, 0), 1);
+}
+
+function hackShader() {
+  const currentUse = wwtlib.LineShaderNormalDates.use;
+  const newUse = function(renderContext, vertex, lineColor, zBuffer, jNow, decay) {
+    currentUse(renderContext, vertex, lineColor, zBuffer, jNow, decay);
+    renderContext.gl?.lineWidth(5);
+  }
+  wwtlib.LineShaderNormalDates.use = newUse;
+  console.log(wwtlib.LineShaderNormalDates);
 }
 
 
