@@ -93,3 +93,18 @@ body::-webkit-scrollbar {
   color: white;
   margin: auto;
 }
+
+#static-figure {
+  postiion: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+#loading-text {
+  position: absolute;
+  top: 5px;
+  margin: auto;
+  font-family: Sans-Serif;
+  font-size: 40pt;
+  color: #1f3cf1;
+}
