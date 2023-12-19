@@ -37,17 +37,6 @@ const initialRA = 271.87846654/15;
 const initialDec = -48.42;
 const initialZoom = 289555092.0 * 6;
 
-const loadingTextContainer = document.querySelector("#loading-text");
-const baseLoadingText = loadingTextContainer.innerHTML.replace(/\.+/, "");
-console.log(baseLoadingText);
-let ellipsisCount = 2;
-function updateLoadingText() {
-  ellipsisCount = (ellipsisCount + 1) % 4;
-  loadingTextContainer.innerHTML = baseLoadingText + ".".repeat(ellipsisCount);
-}
-updateLoadingText();
-const ellipsisInterval = setInterval(updateLoadingText, 300);
-
 var oniOS = (function () {
   var iosQuirkPresent = function () {
       var audio = new Audio();
@@ -107,7 +96,6 @@ function onReady() {
 }
 
 function hideLoadingModal() {
-  clearInterval(ellipsisInterval);
   const modal = document.querySelector("#modal-loading");
   modal.style.visibility = "hidden";
 }
