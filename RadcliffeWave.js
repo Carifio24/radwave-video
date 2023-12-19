@@ -185,6 +185,7 @@ function setupBestFitPhaseAnnotations() {
   const promises = bestFitPhases.map(phase => {
     return fetch(`data/RW_best_fit_${phase}_radec.csv`)
       .then(response => response.text())
+      .then(text => text.replace(/\n/g, "\r\n"))
       .then(text => {
         const layer = new wwtlib.SpreadSheetLayer();
         layer.loadFromString(text, false, false, false, true);
