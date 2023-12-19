@@ -70,7 +70,7 @@ body::-webkit-scrollbar {
   pointer-events: none;
 }
 
-#play-pause {
+.button {
   pointer-events: auto;
   background-color: transparent;
   border: solid 3px white;
@@ -88,7 +88,7 @@ body::-webkit-scrollbar {
   pointer-events: auto;
 }
 
-#play, #pause {
+.button-icon {
   fill: white;
   color: white;
   margin: auto;
