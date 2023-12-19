@@ -33,6 +33,9 @@ const bestFitOffsets = [-2, -1, 0, 1, 2];
 const bestFitPhases = [58, 59, 60, 61, 62, 238, 239, 240, 241, 242];
 const phaseRowCount = 300;
 
+const initialRA = 271.87846654/15;
+const initialDec = -48.42;
+const initialZoom = 289555092.0 * 6;
 
 var oniOS = (function () {
   var iosQuirkPresent = function () {
@@ -64,10 +67,7 @@ function onReady() {
   wwtlib.SpaceTimeController.set_timeRate(timeRate);
   wwtlib.SpaceTimeController.set_syncToClock(false);
   wwtlib.SpaceTimeController.set_now(startDate);
-  const ra = 271.87846654/15;
-  const dec = -48.42;
-  const zoom = 289555092.0 * 6;
-  wwt.gotoRADecZoom(ra, dec, zoom, true);
+  wwt.gotoRADecZoom(initialRA, initialDec, initialZoom, true);
   
   // To stop for testing purposes
   // wwtlib.SpaceTimeController.set_now(new Date("2023-10-18 11:55:55Z"));
@@ -185,25 +185,24 @@ function setupBestFitPhaseAnnotations() {
   const promises = bestFitPhases.map(phase => {
     return fetch(`data/RW_best_fit_${phase}_radec.csv`)
       .then(response => response.text())
+      .then(text => text.replace(/\n/g, "\r\n"))
       .then(text => {
         const layer = new wwtlib.SpreadSheetLayer();
         layer.loadFromString(text, false, false, false, true);
         basicLayerSetup(layer);
         layer.set_name(`Radcliffe Wave Best Fit ${phase}`);
         bestFitPhaseLayers.push(layer);
-        console.log(layer);
         return layer;
       })
       .then(layer => {
         const annotation = new wwtlib.PolyLine();
-        const color = phase < 200 ? "#8000ff" : "#21ff06";
+        const color = phase < 200 ? "#ff45ff" : "#b0ff6d";
         annotation.set_lineColor(color);
         addPhasePointsToAnnotation(layer, annotation);
         scriptInterface.addAnnotation(annotation);
         bestFitPhaseAnnotations.push(annotation);
       });
   });
-  console.log(promises);
   return Promise.all(promises);
 }
 
@@ -265,7 +264,7 @@ function onInputChange(value) {
   if (!isNaN(value)) {
     phase = Math.max(0, Math.min(value, 720));
     if (phase === 0) {
-      resetInitialScene();
+      resetInitialItems();
     } else {
       wwtlib.SpaceTimeController.set_syncToClock(false);
       updatePlayPauseIcon(false);
@@ -286,7 +285,7 @@ function onFirstChange() {
   firstChanged = true;
 }
 
-function resetInitialScene() {
+function resetInitialItems() {
   if (!firstChanged) {
     return;
   }
@@ -305,6 +304,11 @@ function onPlayPauseClicked() {
   const play = !wwtlib.SpaceTimeController.get_syncToClock();
   wwtlib.SpaceTimeController.set_syncToClock(play);
   updatePlayPauseIcon(play);
+}
+
+function onResetClicked() {
+  wwt.gotoRADecZoom(initialRA, initialDec, initialZoom, true);
+  resetInitialItems();
 }
 
 function updatePlayPauseIcon(playing) {
@@ -336,12 +340,14 @@ function getViewAsTour() {
 
 }
 
-const peakOpacity = 0.2;
-const slope = -peakOpacity / 80;
-const intercept = 9 / 4 * peakOpacity;
+const initialOpacity = 0.2;
+const fadeStartPhase = 100;
+const fadeEndPhase = 270;
+const slope = -initialOpacity / (fadeEndPhase - fadeStartPhase);
+const intercept = initialOpacity * fadeEndPhase / (fadeEndPhase - fadeStartPhase);
 
 function opacityForPhase(phase) {
-  return Math.min(Math.max(slope * phase + intercept, 0), 1);
+  return Math.min(Math.max(slope * phase + intercept, 0), initialOpacity);
 }
 
 
@@ -354,7 +360,7 @@ function onAnimationFrame(_timestamp) {
     wwtlib.SpaceTimeController.set_syncToClock(false);
   }
   if (totalPhase >= 720 || (phase === 0 && !wwtlib.SpaceTimeController.get_syncToClock())) {
-    resetInitialScene();
+    resetInitialItems();
   }
   window.requestAnimationFrame(onAnimationFrame);
 }

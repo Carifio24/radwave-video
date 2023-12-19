@@ -1,3 +1,8 @@
+@font-face {
+  font-family: "Avenir Next";
+  src: url("AvenirNext-Regular.ttf");
+}
+
 html, body {
   height: 100%;
   width: 100%;
@@ -70,7 +75,7 @@ body::-webkit-scrollbar {
   pointer-events: none;
 }
 
-#play-pause {
+.button {
   pointer-events: auto;
   background-color: transparent;
   border: solid 3px white;
@@ -80,7 +85,7 @@ body::-webkit-scrollbar {
 }
 
 #time-slider {
-  width: calc(90% - 1rem);
+  width: calc(90% - 72px);
   margin: 0;
   padding: 0;
   height: 1rem;
@@ -88,8 +93,29 @@ body::-webkit-scrollbar {
   pointer-events: auto;
 }
 
-#play, #pause {
+.button-icon {
   fill: white;
   color: white;
   margin: auto;
+}
+
+#static-figure {
+  postiion: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+#loading-text {
+  position: absolute;
+  top: 5px;
+  margin: auto;
+  width: fit-content;
+}
+
+#loading-text p {
+  font-family: "Avenir Next", Sans-Serif;
+  font-size: 40pt;
+  color: #EC0018;
+  margin: auto;
+  width: fit-content;
 }
