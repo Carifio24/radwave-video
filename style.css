@@ -80,7 +80,7 @@ body::-webkit-scrollbar {
 }
 
 #time-slider {
-  width: calc(90% - 1rem);
+  width: calc(90% - 72px);
   margin: 0;
   padding: 0;
   height: 1rem;
