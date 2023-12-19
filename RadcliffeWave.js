@@ -235,7 +235,7 @@ function updateBestFitAnnotations(phase) {
   bestFitOffsets.forEach(offset => {
     const offsetPhase = (phase + offset) % 360;
     const ann = new wwtlib.PolyLine();
-    ann.set_lineColor("#83befb");
+    ann.set_lineColor("#eeffff");
 
     const startIndex = offsetPhase * phaseRowCount;
     const endIndex = (offsetPhase + 1) * phaseRowCount;
