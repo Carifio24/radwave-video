@@ -115,7 +115,7 @@ body::-webkit-scrollbar {
 #loading-text p {
   font-family: "Avenir Next", Sans-Serif;
   font-size: 40pt;
-  color: #EC0018;
+  color: #A9A9A9;
   margin: auto;
   width: fit-content;
 }
