@@ -196,7 +196,7 @@ function setupBestFitPhaseAnnotations() {
       })
       .then(layer => {
         const annotation = new wwtlib.PolyLine();
-        const color = phase < 200 ? "#8000ff" : "#21ff06";
+        const color = phase < 200 ? "#ff45ff" : "#b0ff6d";
         annotation.set_lineColor(color);
         addPhasePointsToAnnotation(layer, annotation);
         scriptInterface.addAnnotation(annotation);
