@@ -341,12 +341,16 @@ function getViewAsTour() {
 
 }
 
-const peakOpacity = 0.2;
-const slope = -peakOpacity / 80;
-const intercept = 9 / 4 * peakOpacity;
+const initialOpacity = 0.2;
+const fadeStartPhase = 100;
+const fadeEndPhase = 270;
+const slope = -initialOpacity / (fadeEndPhase - fadeStartPhase);
+const intercept = initialOpacity * fadeEndPhase / (fadeEndPhase - fadeStartPhase);
+console.log(slope);
+console.log(intercept);
 
 function opacityForPhase(phase) {
-  return Math.min(Math.max(slope * phase + intercept, 0), 1);
+  return Math.min(Math.max(slope * phase + intercept, 0), initialOpacity);
 }
 
 
