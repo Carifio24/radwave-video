@@ -105,15 +105,27 @@ body::-webkit-scrollbar {
   max-width: 40%;
 }
 
-
-#loading-text {
-  top: 20%;
+.text-container {
   margin: auto;
   width: fit-content;
   z-index: 10;
 }
 
-#loading-text p {
+#loading-text {
+  top: 20%;
+}
+
+#main-text {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  pointer-events: none;
+}
+
+#loading-text p,
+#main-text p {
   font-family: "Avenir Next", Sans-Serif;
   font-size: 2.5em;
   color: #A9A9A9;
@@ -121,6 +133,11 @@ body::-webkit-scrollbar {
   width: fit-content;
 }
 
-#subtitle {
+.subtitle {
   opacity: 0.7;
 }
+
+.enabled {
+  pointer-events: auto;
+}
+
