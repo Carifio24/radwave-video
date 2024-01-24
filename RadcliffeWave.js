@@ -133,7 +133,7 @@ function setupDustLayer() {
 
 function setupClusterLayers() {
   const promises = [];
-  for (let phase = -2; phase <= 270; phase++) {
+  for (let phase = -10; phase <= 270; phase++) {
     const p = fetch(`data/RW_cluster_oscillation_${phase}_updated_radec.csv`)
       .then(response => response.text())
       .then(text => text.replace(/\n/g, "\r\n"))
