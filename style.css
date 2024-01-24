@@ -98,6 +98,7 @@ body::-webkit-scrollbar {
   cursor: pointer;
 }
 
+/* Chrome/Safari/Edge Chromium */
 #time-slider::-webkit-slider-thumb {
    -webkit-appearance: none;
    appearance: none;
@@ -115,6 +116,7 @@ body::-webkit-scrollbar {
   background: rgba(0, 0, 0, 0.5);
 }
 
+/* Firefox */
 #time-slider::-moz-range-thumb {
    -webkit-appearance: none;
    appearance: none;
