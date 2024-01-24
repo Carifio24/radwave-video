@@ -233,7 +233,7 @@ function updateBestFitAnnotations(phase) {
   bestFitAnnotations.forEach(ann => scriptInterface.removeAnnotation(ann));
   bestFitAnnotations = [];
   bestFitOffsets.forEach(offset => {
-    const offsetPhase = (phase + offset) % 360;
+    const offsetPhase = ((phase + offset) % 360 + 360) % 360;
     const ann = new wwtlib.PolyLine();
     ann.set_lineColor("#C3ECFF");
 
