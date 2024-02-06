@@ -52,6 +52,22 @@ var oniOS = (function () {
   return isIOS || (isAppleDevice && (isTouchScreen || iosQuirkPresent()));
 })();
 
+// Workaroud for a WWT bug where the Solar System min zoom is ignored
+// This has been fixed upstream, but the fix hasn't yet been released
+function zoom(factor) {
+  this.renderContext.targetCamera.zoom *= factor;
+  if (this.renderContext.targetCamera.zoom > this.get_zoomMax()) {
+    this.renderContext.targetCamera.zoom = this.get_zoomMax();
+  }
+  if (this.renderContext.targetCamera.zoom < this.get_zoomMin()) {
+    this.renderContext.targetCamera.zoom = this.get_zoomMin();
+  }
+
+  if (!scriptInterface.settings.get_smoothPan()) {
+    this.renderContext.viewCamera = this.renderContext.targetCamera.copy();
+  }
+}
+
 function initWWT() {
   const builder = new wwtlib.WWTControlBuilder("wwtcanvas");
   builder.startRenderLoop(true);
@@ -79,6 +95,9 @@ function onReady() {
   settings.set_showConstellationBoundries(false);  // The typo is intentional
   settings.set_showConstellationFigures(false);
   settings.set_showCrosshairs(false);
+  wwt.setSolarSystemMinZoom(160763995.5927744);
+  wwt.setSolarSystemMaxZoom(22328103718.39476);
+  wwt.zoom = zoom.bind(wwt);
   const sunPromise = setupSunLayer();
   const clustersPromise = setupClusterLayers();
   const bestFitPromise = setupBestFitLayer();
