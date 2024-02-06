@@ -113,8 +113,8 @@ function basicLayerSetup(layer, timeSeries=false) {
   layer.set_markerScale(wwtlib.MarkerScales.screen);
 
   if (timeSeries) {
-    layer.set_startDateColumn(4);
-    layer.set_endDateColumn(5);
+    layer.set_startDateColumn(3);
+    layer.set_endDateColumn(4);
     layer.set_timeSeries(true);
     layer.set_decay(15);
   }
