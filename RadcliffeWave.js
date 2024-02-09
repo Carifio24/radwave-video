@@ -208,7 +208,8 @@ async function setupBestFitLayer() {
       bestFitLayer.set_name("Radcliffe Wave Best Fit");
       bestFitLayer.set_color(wwtlib.Color.load("#83befb"));
       if (tour) {
-        bestFitLayer._table$1.rows = bestFitLayer._table$1.rows.slice(0, phaseRowCount);
+        bestFitLayer._table$1.rows = bestFitLayer._table$1.rows.slice(0, phaseRowCount * 5);
+        wwtlib.LayerManager.addSpreadsheetLayer(bestFitLayer, "Sky");
       }
     })
     .then(() => {
