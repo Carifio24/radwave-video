@@ -37,6 +37,8 @@ const initialRA = 271.87846654/15;
 const initialDec = -48.42;
 const initialZoom = 289555092.0 * 6;
 
+let tour = false;
+
 var oniOS = (function () {
   var iosQuirkPresent = function () {
       var audio = new Audio();
@@ -85,6 +87,9 @@ function onReady() {
   wwtlib.SpaceTimeController.set_now(startDate);
   wwt.gotoRADecZoom(initialRA, initialDec, initialZoom, true);
   
+  const searchParams = new URLSearchParams(window.location.search);
+  tour = searchParams.get("tour")?.toLowerCase() === "true";
+  
   // To stop for testing purposes
   // wwtlib.SpaceTimeController.set_now(new Date("2023-10-18 11:55:55Z"));
   // wwtlib.SpaceTimeController.set_syncToClock(false);
@@ -110,6 +115,10 @@ function onReady() {
       updateBestFitAnnotations(0);
       updateSlider(0);
       hideLoadingModal();
+
+      if (tour) {
+        getViewAsTour();
+      }
     });
   });
 }
@@ -152,7 +161,8 @@ function setupDustLayer() {
 
 function setupClusterLayers() {
   const promises = [];
-  for (let phase = -10; phase <= 270; phase++) {
+  const upperPhase = tour ? 0 : 270;
+  for (let phase = -10; phase <= upperPhase; phase++) {
     const p = fetch(`data/RW_cluster_oscillation_${phase}_updated_radec.csv`)
       .then(response => response.text())
       .then(text => text.replace(/\n/g, "\r\n"))
@@ -181,18 +191,25 @@ function setupSunLayer() {
 }
 
 async function setupBestFitLayer() {
-  return fetch("data/RW_best_fit_oscillation_phase_radec_downsampled.csv")
+  const filename = tour ?
+    "RW_best_fit_oscillation_phase_radec.csv" :
+    "RW_best_fit_oscillation_phase_radec_downsampled.csv";
+  return fetch(`data/${filename}`)
     .then(response => response.text())
     .then(text => text.replace(/\n/g, "\r\n"))
     .then(text => { 
 
       // We are deliberately not going to add this to the layer manager
       // We're just hijacking the table-parsing functionality for the line annotation
+      // The exception is if we want to output a tour - then we show the first phase
       bestFitLayer = new wwtlib.SpreadSheetLayer();
       bestFitLayer.loadFromString(text, false, false, false, true);
       basicLayerSetup(bestFitLayer, true);
       bestFitLayer.set_name("Radcliffe Wave Best Fit");
       bestFitLayer.set_color(wwtlib.Color.load("#83befb"));
+      if (tour) {
+        bestFitLayer._table$1.rows = bestFitLayer._table$1.rows.slice(0, phaseRowCount);
+      }
     })
     .then(() => {
       factor = bestFitLayer.getScaleFactor(bestFitLayer.get_altUnit(), 1);
