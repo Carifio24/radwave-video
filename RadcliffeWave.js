@@ -38,6 +38,8 @@ const initialDec = -48.42;
 const initialZoom = 289555092.0 * 6;
 
 let tour = false;
+const linesep = "\r\n";
+const linesepRegex = new RegExp(`${linesep}/g`);
 
 var oniOS = (function () {
   var iosQuirkPresent = function () {
@@ -151,7 +153,7 @@ function basicLayerSetup(layer, timeSeries=false) {
 function setupDustLayer() {
   fetch("data/RW_dust_oscillation_phase_updated_radec.csv")
     .then(response => response.text())
-    .then(text => text.replace(/\n/g, "\r\n"))
+    .then(text => text.replace(linesepRegex, "\r\n"))
     .then(text => { 
       dustLayer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", "Radcliffe Wave Dust", text);
       basicLayerSetup(dustLayer, true);
@@ -161,11 +163,10 @@ function setupDustLayer() {
 
 function setupClusterLayers() {
   const promises = [];
-  const upperPhase = tour ? 0 : 270;
-  for (let phase = -10; phase <= upperPhase; phase++) {
+  for (let phase = -10; phase <= 270; phase++) {
     const p = fetch(`data/RW_cluster_oscillation_${phase}_updated_radec.csv`)
       .then(response => response.text())
-      .then(text => text.replace(/\n/g, "\r\n"))
+      .then(text => text.replace(linesepRegex, "\r\n"))
       .then(text => { 
         clusterLayer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", `Radcliffe Wave Cluster Phase ${phase}`, text);
         basicLayerSetup(clusterLayer, true);
@@ -181,7 +182,7 @@ function setupClusterLayers() {
 function setupSunLayer() {
   fetch("data/Sun_radec.csv")
     .then(response => response.text())
-    .then(text => text.replace(/\n/g, "\r\n"))
+    .then(text => text.replace(linesepRegex, "\r\n"))
     .then(text => { 
       sunLayer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", "Radcliffe Wave Sun", text);
       basicLayerSetup(sunLayer, false);
@@ -196,21 +197,22 @@ async function setupBestFitLayer() {
     "RW_best_fit_oscillation_phase_radec_downsampled.csv";
   return fetch(`data/${filename}`)
     .then(response => response.text())
-    .then(text => text.replace(/\n/g, "\r\n"))
+    .then(text => text.replace(linesepRegex, "\r\n"))
     .then(text => { 
 
-      // We are deliberately not going to add this to the layer manager
-      // We're just hijacking the table-parsing functionality for the line annotation
-      // The exception is if we want to output a tour - then we show the first phase
-      bestFitLayer = new wwtlib.SpreadSheetLayer();
-      bestFitLayer.loadFromString(text, false, false, false, true);
-      basicLayerSetup(bestFitLayer, true);
+      if (tour) {
+        bestFitLayer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", "Best Fit Layer", text);
+      } else {
+        // We are deliberately not going to add this to the layer manager
+        // We're just hijacking the table-parsing functionality for the line annotation
+        // The exception is if we want to output a tour - then we show the first phase
+        bestFitLayer = new wwtlib.SpreadSheetLayer();
+        bestFitLayer.loadFromString(text, false, false, false, true);
+      }
+      basicLayerSetup(bestFitLayer, tour);
       bestFitLayer.set_name("Radcliffe Wave Best Fit");
       bestFitLayer.set_color(wwtlib.Color.load("#83befb"));
-      if (tour) {
-        bestFitLayer._table$1.rows = bestFitLayer._table$1.rows.slice(0, phaseRowCount * 5);
-        wwtlib.LayerManager.addSpreadsheetLayer(bestFitLayer, "Sky");
-      }
+      bestFitLayer.set_scaleFactor(15);
     })
     .then(() => {
       factor = bestFitLayer.getScaleFactor(bestFitLayer.get_altUnit(), 1);
@@ -222,12 +224,20 @@ function setupBestFitPhaseAnnotations() {
   const promises = bestFitPhases.map(phase => {
     return fetch(`data/RW_best_fit_${phase}_radec.csv`)
       .then(response => response.text())
-      .then(text => text.replace(/\n/g, "\r\n"))
+      .then(text => text.replace(linesepRegex, "\r\n"))
       .then(text => {
-        const layer = new wwtlib.SpreadSheetLayer();
-        layer.loadFromString(text, false, false, false, true);
+        let layer;
+        // Dead branch on purpose for now - maybe we'll want this in the tour?
+        if (false) {
+          layer = wwtlib.LayerManager.createSpreadsheetLayer("Sky", `Best Fit Layer Phase {phase}`, text);
+        } else {
+          layer = new wwtlib.SpreadSheetLayer();
+          layer.loadFromString(text, false, false, false, true);
+        }
         basicLayerSetup(layer);
+        layer.set_color(wwtlib.Color.load(phase < 200 ? "#ff45ff" : "#b0ff6d"));
         layer.set_name(`Radcliffe Wave Best Fit ${phase}`);
+        layer.set_scaleFactor(12);
         bestFitPhaseLayers.push(layer);
         return layer;
       })
@@ -359,16 +369,16 @@ function getViewAsTour() {
 
   // Get current view as XML and save to the tourxml variable
 
-  wwtlib.WWTControl.singleton.createTour()
-  editor = wwtlib.WWTControl.singleton.tourEdit
-  editor.addSlide()
-  tour = editor.get_tour()
-  blb = tour.saveToBlob()
+  wwtlib.WWTControl.singleton.createTour("Oscillating Radcliffe Wave");
+  editor = wwtlib.WWTControl.singleton.tourEdit;
+  editor.addSlide();
+  tour = editor.get_tour();
+  blb = tour.saveToBlob();
 
   const reader = new FileReader();
 
   reader.addEventListener('loadend', (e) => {
-  const text = e.srcElement.result;
+    const text = e.srcElement.result;
     tourxml += text;
   });
 
@@ -390,7 +400,9 @@ function opacityForPhase(phase) {
 
 function onAnimationFrame(_timestamp) {
   const [period, phase] = getCurrentPhaseInfo();
-  updateBestFitAnnotations(phase);
+  if (!tour) {
+    updateBestFitAnnotations(phase);
+  }
   const totalPhase = period * 360 + phase;
   updateSlider(totalPhase);
   if (totalPhase === 720) {
