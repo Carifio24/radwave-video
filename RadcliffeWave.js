@@ -38,8 +38,32 @@ const initialDec = -48.42;
 const initialZoom = 289555092.0 * 6;
 
 let tour = false;
-const linesep = "\r\n";
-const linesepRegex = new RegExp(`${linesep}/g`);
+const onWindows = getOS() === "Windows";
+const linesep = onWindows ? "\r\n" : "\n";
+const linesepRegex = new RegExp(`${linesep}`, 'g');
+
+function getOS() {
+  const userAgent = window.navigator.userAgent,
+      platform = window.navigator?.userAgentData?.platform || window.navigator.platform,
+      macosPlatforms = ['macOS', 'Macintosh', 'MacIntel', 'MacPPC', 'Mac68K'],
+      windowsPlatforms = ['Win32', 'Win64', 'Windows', 'WinCE'],
+      iosPlatforms = ['iPhone', 'iPad', 'iPod'];
+  let os = null;
+
+  if (macosPlatforms.indexOf(platform) !== -1) {
+    os = 'Mac OS';
+  } else if (iosPlatforms.indexOf(platform) !== -1) {
+    os = 'iOS';
+  } else if (windowsPlatforms.indexOf(platform) !== -1) {
+    os = 'Windows';
+  } else if (/Android/.test(userAgent)) {
+    os = 'Android';
+  } else if (/Linux/.test(platform)) {
+    os = 'Linux';
+  }
+
+  return os;
+}
 
 var oniOS = (function () {
   var iosQuirkPresent = function () {
